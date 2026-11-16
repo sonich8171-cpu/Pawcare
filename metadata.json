@@ -1,0 +1,6 @@
+{
+  "name": "PawCare — Dehradun Pet Care Marketplace",
+  "description": "Trusted, affordable, and convenient pet sitting, dog walking, pet feeding, and basic pet care marketplace in Dehradun, Uttarakhand.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

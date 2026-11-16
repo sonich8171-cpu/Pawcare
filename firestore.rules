@@ -1,0 +1,726 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Global Safety Net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Connection test document (read-only health check, zero sensitive data)
+    match /test/connection {
+      allow get: if true;
+      allow write: if false;
+    }
+
+    // --- Primitive Helpers ---
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isVerifiedUser() {
+      return isSignedIn() && request.auth.token.email_verified == true;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isAdmin() {
+      return isVerifiedUser() && (
+        request.auth.token.email == 'sonich8171@gmail.com' ||
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid))
+      );
+    }
+
+    function isNonEmptyStr(val, minLen, maxLen) {
+      return val is string && val.size() >= minLen && val.size() <= maxLen;
+    }
+
+    function isOptStr(data, key, maxLen) {
+      return !(key in data) || (data[key] is string && data[key].size() <= maxLen);
+    }
+
+    // --- Entity Validation Helpers ---
+    function isValidUser(data) {
+      return data.keys().hasAll(['uid', 'displayName', 'email', 'role', 'accountStatus', 'createdAt', 'updatedAt']) &&
+        data.keys().hasOnly(['uid', 'displayName', 'email', 'phone', 'locality', 'address', 'role', 'accountStatus', 'photoUrl', 'emergencyContactName', 'emergencyContactPhone', 'createdAt', 'updatedAt']) &&
+        isValidId(data.uid) &&
+        isNonEmptyStr(data.displayName, 2, 100) &&
+        isNonEmptyStr(data.email, 5, 160) &&
+        data.role in ['customer', 'caregiver', 'admin'] &&
+        data.accountStatus in ['active', 'suspended'] &&
+        isOptStr(data, 'phone', 20) &&
+        isOptStr(data, 'locality', 100) &&
+        isOptStr(data, 'address', 300) &&
+        isOptStr(data, 'photoUrl', 1000) &&
+        isOptStr(data, 'emergencyContactName', 100) &&
+        isOptStr(data, 'emergencyContactPhone', 20) &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidAdmin(data) {
+      return data.keys().hasAll(['uid', 'email', 'createdAt']) &&
+        data.keys().hasOnly(['uid', 'email', 'createdAt']) &&
+        isValidId(data.uid) &&
+        isNonEmptyStr(data.email, 5, 160) &&
+        data.createdAt is timestamp;
+    }
+
+    function isValidPet(data) {
+      return data.keys().hasAll(['petId', 'ownerId', 'name', 'petType', 'breed', 'ageYears', 'gender', 'createdAt', 'updatedAt']) &&
+        data.keys().hasOnly(['petId', 'ownerId', 'name', 'petType', 'breed', 'ageYears', 'gender', 'healthInfo', 'feedingInstructions', 'behavioralInfo', 'specialCare', 'photoUrl', 'createdAt', 'updatedAt']) &&
+        isValidId(data.petId) &&
+        isValidId(data.ownerId) &&
+        isNonEmptyStr(data.name, 1, 80) &&
+        data.petType in ['Dog', 'Cat', 'Bird', 'Rabbit', 'Other'] &&
+        isNonEmptyStr(data.breed, 1, 80) &&
+        (data.ageYears is int || data.ageYears is float) && data.ageYears >= 0 && data.ageYears <= 40 &&
+        data.gender in ['Male', 'Female', 'Unknown'] &&
+        isOptStr(data, 'healthInfo', 600) &&
+        isOptStr(data, 'feedingInstructions', 600) &&
+        isOptStr(data, 'behavioralInfo', 600) &&
+        isOptStr(data, 'specialCare', 600) &&
+        isOptStr(data, 'photoUrl', 1000) &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidCaregiverPrivate(data) {
+      return data.keys().hasAll(['caregiverId', 'userId', 'fullName', 'email', 'phone', 'address', 'locality', 'experienceYears', 'skills', 'servicesOffered', 'availability', 'expectedCharge', 'idDocType', 'idDocNumber', 'verificationStatus', 'accountStatus', 'createdAt', 'updatedAt']) &&
+        data.keys().hasOnly(['caregiverId', 'userId', 'fullName', 'email', 'phone', 'address', 'locality', 'photoUrl', 'bio', 'experienceYears', 'skills', 'servicesOffered', 'availability', 'expectedCharge', 'idDocType', 'idDocNumber', 'idDocUrl', 'verificationStatus', 'accountStatus', 'adminNotes', 'createdAt', 'updatedAt']) &&
+        isValidId(data.caregiverId) &&
+        isValidId(data.userId) &&
+        isNonEmptyStr(data.fullName, 2, 100) &&
+        isNonEmptyStr(data.email, 5, 160) &&
+        isNonEmptyStr(data.phone, 8, 20) &&
+        isNonEmptyStr(data.address, 5, 300) &&
+        isNonEmptyStr(data.locality, 2, 100) &&
+        isOptStr(data, 'photoUrl', 1000) &&
+        isOptStr(data, 'bio', 800) &&
+        (data.experienceYears is int || data.experienceYears is float) && data.experienceYears >= 0 && data.experienceYears <= 60 &&
+        data.skills is list && data.skills.size() <= 15 && (data.skills.size() == 0 || (data.skills[0] is string && data.skills[0].size() <= 60)) &&
+        data.servicesOffered is list && data.servicesOffered.size() >= 1 && data.servicesOffered.size() <= 10 && data.servicesOffered[0] is string && data.servicesOffered[0].size() <= 80 &&
+        data.availability is list && data.availability.size() >= 1 && data.availability.size() <= 14 && data.availability[0] is string && data.availability[0].size() <= 60 &&
+        (data.expectedCharge is int || data.expectedCharge is float) && data.expectedCharge >= 100 && data.expectedCharge <= 10000 &&
+        data.idDocType in ['Aadhaar', 'PAN', 'Passport', 'Driving License', 'Student ID'] &&
+        isNonEmptyStr(data.idDocNumber, 4, 40) &&
+        isOptStr(data, 'idDocUrl', 1000) &&
+        data.verificationStatus in ['pending', 'verified', 'rejected'] &&
+        data.accountStatus in ['active', 'suspended'] &&
+        isOptStr(data, 'adminNotes', 500) &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidCaregiverPublic(data) {
+      return data.keys().hasAll(['caregiverId', 'fullName', 'locality', 'experienceYears', 'skills', 'servicesOffered', 'availability', 'expectedCharge', 'verificationStatus', 'accountStatus', 'ratingAvg', 'reviewCount', 'createdAt', 'updatedAt']) &&
+        data.keys().hasOnly(['caregiverId', 'fullName', 'locality', 'photoUrl', 'bio', 'experienceYears', 'skills', 'servicesOffered', 'availability', 'expectedCharge', 'verificationStatus', 'accountStatus', 'ratingAvg', 'reviewCount', 'createdAt', 'updatedAt']) &&
+        isValidId(data.caregiverId) &&
+        isNonEmptyStr(data.fullName, 2, 100) &&
+        isNonEmptyStr(data.locality, 2, 100) &&
+        isOptStr(data, 'photoUrl', 1000) &&
+        isOptStr(data, 'bio', 800) &&
+        (data.experienceYears is int || data.experienceYears is float) && data.experienceYears >= 0 && data.experienceYears <= 60 &&
+        data.skills is list && data.skills.size() <= 15 && (data.skills.size() == 0 || (data.skills[0] is string && data.skills[0].size() <= 60)) &&
+        data.servicesOffered is list && data.servicesOffered.size() >= 1 && data.servicesOffered.size() <= 10 && data.servicesOffered[0] is string && data.servicesOffered[0].size() <= 80 &&
+        data.availability is list && data.availability.size() >= 1 && data.availability.size() <= 14 && data.availability[0] is string && data.availability[0].size() <= 60 &&
+        (data.expectedCharge is int || data.expectedCharge is float) && data.expectedCharge >= 100 && data.expectedCharge <= 10000 &&
+        data.verificationStatus in ['pending', 'verified', 'rejected'] &&
+        data.accountStatus in ['active', 'suspended'] &&
+        (data.ratingAvg is int || data.ratingAvg is float) && data.ratingAvg >= 0 && data.ratingAvg <= 5 &&
+        (data.reviewCount is int) && data.reviewCount >= 0 &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidService(data) {
+      return data.keys().hasAll(['serviceId', 'slug', 'title', 'description', 'durationLabel', 'basePrice', 'providerPayout', 'platformCommission', 'isActive', 'createdAt', 'updatedAt']) &&
+        data.keys().hasOnly(['serviceId', 'slug', 'title', 'description', 'durationLabel', 'basePrice', 'providerPayout', 'platformCommission', 'isActive', 'imageUrl', 'createdAt', 'updatedAt']) &&
+        isValidId(data.serviceId) &&
+        isNonEmptyStr(data.slug, 2, 80) &&
+        isNonEmptyStr(data.title, 2, 100) &&
+        isNonEmptyStr(data.description, 10, 800) &&
+        isNonEmptyStr(data.durationLabel, 2, 60) &&
+        (data.basePrice is int || data.basePrice is float) && data.basePrice >= 50 && data.basePrice <= 20000 &&
+        (data.providerPayout is int || data.providerPayout is float) && data.providerPayout >= 0 && data.providerPayout <= data.basePrice &&
+        (data.platformCommission is int || data.platformCommission is float) && data.platformCommission >= 0 && data.platformCommission <= data.basePrice &&
+        data.isActive is bool &&
+        isOptStr(data, 'imageUrl', 500) &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidBooking(data) {
+      return data.keys().hasAll(['bookingId', 'customerId', 'customerName', 'caregiverId', 'caregiverName', 'petId', 'petName', 'serviceId', 'serviceTitle', 'bookingDate', 'timeSlot', 'locality', 'serviceAddress', 'grossAmount', 'caregiverPayout', 'platformCommission', 'paymentMethod', 'paymentStatus', 'status', 'hasReview', 'disputeStatus', 'createdAt', 'updatedAt']) &&
+        data.keys().hasOnly(['bookingId', 'customerId', 'customerName', 'customerPhone', 'caregiverId', 'caregiverName', 'petId', 'petName', 'petType', 'petBreed', 'petInstructions', 'serviceId', 'serviceTitle', 'bookingDate', 'timeSlot', 'locality', 'serviceAddress', 'specialInstructions', 'grossAmount', 'caregiverPayout', 'platformCommission', 'paymentMethod', 'paymentStatus', 'status', 'hasReview', 'disputeStatus', 'disputeNotes', 'createdAt', 'updatedAt']) &&
+        isValidId(data.bookingId) &&
+        isValidId(data.customerId) &&
+        isNonEmptyStr(data.customerName, 2, 100) &&
+        isOptStr(data, 'customerPhone', 20) &&
+        isValidId(data.caregiverId) &&
+        isNonEmptyStr(data.caregiverName, 2, 100) &&
+        isValidId(data.petId) &&
+        isNonEmptyStr(data.petName, 1, 80) &&
+        isOptStr(data, 'petType', 40) &&
+        isOptStr(data, 'petBreed', 80) &&
+        isOptStr(data, 'petInstructions', 1000) &&
+        isValidId(data.serviceId) &&
+        isNonEmptyStr(data.serviceTitle, 2, 100) &&
+        data.bookingDate is string && data.bookingDate.size() == 10 && data.bookingDate.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$') &&
+        isNonEmptyStr(data.timeSlot, 3, 40) &&
+        isNonEmptyStr(data.locality, 2, 100) &&
+        isNonEmptyStr(data.serviceAddress, 5, 300) &&
+        isOptStr(data, 'specialInstructions', 600) &&
+        (data.grossAmount is int || data.grossAmount is float) && data.grossAmount > 0 && data.grossAmount <= 50000 &&
+        (data.caregiverPayout is int || data.caregiverPayout is float) && data.caregiverPayout >= 0 && data.caregiverPayout <= data.grossAmount &&
+        (data.platformCommission is int || data.platformCommission is float) && data.platformCommission >= 0 && data.platformCommission <= data.grossAmount &&
+        data.paymentMethod in ['cash', 'upi', 'online_gateway'] &&
+        data.paymentStatus in ['pending', 'test_verified', 'paid', 'refund_pending', 'refunded'] &&
+        data.status in ['pending', 'accepted', 'rejected', 'confirmed', 'in_progress', 'completed', 'cancelled'] &&
+        data.hasReview is bool &&
+        data.disputeStatus in ['none', 'open', 'resolved'] &&
+        isOptStr(data, 'disputeNotes', 500) &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidBookingLock(data) {
+      return data.keys().hasAll(['lockId', 'bookingId', 'caregiverId', 'customerId', 'bookingDate', 'timeSlot', 'status', 'createdAt', 'updatedAt']) &&
+        data.keys().hasOnly(['lockId', 'bookingId', 'caregiverId', 'customerId', 'bookingDate', 'timeSlot', 'status', 'createdAt', 'updatedAt']) &&
+        isValidId(data.lockId) &&
+        isValidId(data.bookingId) &&
+        isValidId(data.caregiverId) &&
+        isValidId(data.customerId) &&
+        data.bookingDate is string && data.bookingDate.size() == 10 &&
+        isNonEmptyStr(data.timeSlot, 3, 40) &&
+        data.status in ['active', 'released'] &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidReview(data) {
+      return data.keys().hasAll(['reviewId', 'bookingId', 'customerId', 'customerName', 'caregiverId', 'rating', 'comment', 'wouldRepeat', 'createdAt', 'updatedAt']) &&
+        data.keys().hasOnly(['reviewId', 'bookingId', 'customerId', 'customerName', 'caregiverId', 'rating', 'comment', 'wouldRepeat', 'createdAt', 'updatedAt']) &&
+        isValidId(data.reviewId) &&
+        isValidId(data.bookingId) &&
+        isValidId(data.customerId) &&
+        isNonEmptyStr(data.customerName, 2, 100) &&
+        isValidId(data.caregiverId) &&
+        (data.rating is int || data.rating is float) && data.rating >= 1 && data.rating <= 5 &&
+        isNonEmptyStr(data.comment, 3, 600) &&
+        data.wouldRepeat is bool &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidNotification(data) {
+      return data.keys().hasAll(['notificationId', 'userId', 'title', 'message', 'type', 'isRead', 'createdAt', 'updatedAt']) &&
+        data.keys().hasOnly(['notificationId', 'userId', 'title', 'message', 'type', 'relatedBookingId', 'isRead', 'createdAt', 'updatedAt']) &&
+        isValidId(data.notificationId) &&
+        isValidId(data.userId) &&
+        isNonEmptyStr(data.title, 2, 120) &&
+        isNonEmptyStr(data.message, 2, 400) &&
+        data.type in ['booking_request', 'booking_update', 'cancellation', 'review_reminder', 'verification'] &&
+        isOptStr(data, 'relatedBookingId', 128) &&
+        data.isRead is bool &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidPayment(data) {
+      return data.keys().hasAll(['paymentId', 'bookingId', 'customerId', 'caregiverId', 'grossAmount', 'platformCommission', 'caregiverPayout', 'method', 'status', 'gatewayMode', 'createdAt', 'updatedAt']) &&
+        data.keys().hasOnly(['paymentId', 'bookingId', 'customerId', 'caregiverId', 'grossAmount', 'platformCommission', 'caregiverPayout', 'method', 'status', 'gatewayMode', 'referenceCode', 'createdAt', 'updatedAt']) &&
+        isValidId(data.paymentId) &&
+        isValidId(data.bookingId) &&
+        isValidId(data.customerId) &&
+        isValidId(data.caregiverId) &&
+        (data.grossAmount is int || data.grossAmount is float) && data.grossAmount > 0 &&
+        (data.platformCommission is int || data.platformCommission is float) && data.platformCommission >= 0 &&
+        (data.caregiverPayout is int || data.caregiverPayout is float) && data.caregiverPayout >= 0 &&
+        data.method in ['cash', 'upi', 'online_gateway'] &&
+        data.status in ['pending', 'test_verified', 'paid', 'refund_pending', 'refunded'] &&
+        data.gatewayMode in ['pending_integration', 'test_mode', 'cash_on_service'] &&
+        isOptStr(data, 'referenceCode', 80) &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidTransaction(data) {
+      return data.keys().hasAll(['transactionId', 'bookingId', 'customerId', 'caregiverId', 'grossAmount', 'platformCommission', 'caregiverPayout', 'type', 'status', 'createdAt', 'updatedAt']) &&
+        data.keys().hasOnly(['transactionId', 'bookingId', 'customerId', 'caregiverId', 'grossAmount', 'platformCommission', 'caregiverPayout', 'type', 'status', 'createdAt', 'updatedAt']) &&
+        isValidId(data.transactionId) &&
+        isValidId(data.bookingId) &&
+        isValidId(data.customerId) &&
+        isValidId(data.caregiverId) &&
+        (data.grossAmount is int || data.grossAmount is float) && data.grossAmount > 0 &&
+        (data.platformCommission is int || data.platformCommission is float) && data.platformCommission >= 0 &&
+        (data.caregiverPayout is int || data.caregiverPayout is float) && data.caregiverPayout >= 0 &&
+        data.type in ['booking_charge', 'refund'] &&
+        data.status in ['pending', 'test_verified', 'settled', 'refunded'] &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidPlatformSetting(data) {
+      return data.keys().hasAll(['settingId', 'whatsappNumber', 'defaultBookingPrice', 'defaultProviderCost', 'monthlyFixedCost', 'commissionModel', 'localities', 'updatedAt']) &&
+        data.keys().hasOnly(['settingId', 'platformName', 'whatsappNumber', 'supportEmail', 'heroBannerNotice', 'bookingPolicy', 'cancellationPolicy', 'defaultBookingPrice', 'defaultProviderCost', 'monthlyFixedCost', 'commissionModel', 'commissionPercentage', 'localities', 'faqs', 'testimonials', 'updatedAt']) &&
+        isValidId(data.settingId) &&
+        isOptStr(data, 'platformName', 80) &&
+        isNonEmptyStr(data.whatsappNumber, 8, 20) &&
+        isOptStr(data, 'supportEmail', 160) &&
+        isOptStr(data, 'heroBannerNotice', 300) &&
+        isOptStr(data, 'bookingPolicy', 1200) &&
+        isOptStr(data, 'cancellationPolicy', 1200) &&
+        (data.defaultBookingPrice is int || data.defaultBookingPrice is float) && data.defaultBookingPrice > 0 &&
+        (data.defaultProviderCost is int || data.defaultProviderCost is float) && data.defaultProviderCost >= 0 &&
+        (data.monthlyFixedCost is int || data.monthlyFixedCost is float) && data.monthlyFixedCost >= 0 &&
+        data.commissionModel in ['fixed_margin', 'percentage'] &&
+        (!('commissionPercentage' in data) || ((data.commissionPercentage is int || data.commissionPercentage is float) && data.commissionPercentage >= 0 && data.commissionPercentage <= 100)) &&
+        data.localities is list && data.localities.size() <= 40 && (data.localities.size() == 0 || (data.localities[0] is string && data.localities[0].size() <= 100)) &&
+        (!('faqs' in data) || (data.faqs is list && data.faqs.size() <= 30)) &&
+        (!('testimonials' in data) || (data.testimonials is list && data.testimonials.size() <= 30)) &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidSupportTicket(data) {
+      return data.keys().hasAll(['ticketId', 'userId', 'name', 'email', 'subject', 'message', 'status', 'createdAt', 'updatedAt']) &&
+        data.keys().hasOnly(['ticketId', 'userId', 'name', 'email', 'phone', 'subject', 'message', 'bookingId', 'status', 'adminResponse', 'createdAt', 'updatedAt']) &&
+        isValidId(data.ticketId) &&
+        isValidId(data.userId) &&
+        isNonEmptyStr(data.name, 2, 100) &&
+        isNonEmptyStr(data.email, 5, 160) &&
+        isOptStr(data, 'phone', 20) &&
+        isNonEmptyStr(data.subject, 3, 150) &&
+        isNonEmptyStr(data.message, 5, 1000) &&
+        isOptStr(data, 'bookingId', 128) &&
+        data.status in ['open', 'in_review', 'resolved'] &&
+        isOptStr(data, 'adminResponse', 600) &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidPromotion(data) {
+      return data.keys().hasAll(['promoId', 'code', 'title', 'discountPercent', 'isActive', 'createdAt', 'updatedAt']) &&
+        data.keys().hasOnly(['promoId', 'code', 'title', 'description', 'discountPercent', 'isActive', 'createdAt', 'updatedAt']) &&
+        isValidId(data.promoId) &&
+        isNonEmptyStr(data.code, 3, 30) &&
+        isNonEmptyStr(data.title, 3, 120) &&
+        isOptStr(data, 'description', 400) &&
+        (data.discountPercent is int || data.discountPercent is float) && data.discountPercent >= 1 && data.discountPercent <= 90 &&
+        data.isActive is bool &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    // --- Collection Rules ---
+
+    match /users/{userId} {
+      allow get: if isValidId(userId) && (isOwner(userId) || isAdmin());
+      allow list: if isAdmin();
+      allow create: if isVerifiedUser() &&
+        isValidId(userId) &&
+        isValidUser(incoming()) &&
+        isOwner(userId) &&
+        incoming().uid == userId &&
+        incoming().role in ['customer', 'caregiver'] &&
+        incoming().accountStatus == 'active' &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time;
+      allow update: if isVerifiedUser() &&
+        isValidId(userId) &&
+        isValidUser(incoming()) &&
+        (
+          (isAdmin() && incoming().updatedAt == request.time && incoming().uid == existing().uid && incoming().createdAt == existing().createdAt) ||
+          (isOwner(userId) &&
+            incoming().uid == existing().uid &&
+            incoming().email == existing().email &&
+            incoming().role == existing().role &&
+            incoming().accountStatus == existing().accountStatus &&
+            incoming().createdAt == existing().createdAt &&
+            incoming().updatedAt == request.time &&
+            incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'phone', 'locality', 'address', 'photoUrl', 'emergencyContactName', 'emergencyContactPhone', 'updatedAt']))
+        );
+      allow delete: if isAdmin() && isValidId(userId);
+    }
+
+    match /customers/{customerId} {
+      allow get: if isValidId(customerId) && (isOwner(customerId) || isAdmin());
+      allow list: if isAdmin();
+      allow create: if isVerifiedUser() &&
+        isValidId(customerId) &&
+        isValidUser(incoming()) &&
+        isOwner(customerId) &&
+        incoming().uid == customerId &&
+        incoming().role == 'customer' &&
+        incoming().accountStatus == 'active' &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time;
+      allow update: if isVerifiedUser() &&
+        isValidId(customerId) &&
+        isValidUser(incoming()) &&
+        (
+          (isAdmin() && incoming().updatedAt == request.time && incoming().uid == existing().uid && incoming().createdAt == existing().createdAt) ||
+          (isOwner(customerId) &&
+            incoming().uid == existing().uid &&
+            incoming().email == existing().email &&
+            incoming().role == existing().role &&
+            incoming().accountStatus == existing().accountStatus &&
+            incoming().createdAt == existing().createdAt &&
+            incoming().updatedAt == request.time &&
+            incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'phone', 'locality', 'address', 'photoUrl', 'emergencyContactName', 'emergencyContactPhone', 'updatedAt']))
+        );
+      allow delete: if isAdmin() && isValidId(customerId);
+    }
+
+    match /admins/{adminId} {
+      allow get: if isValidId(adminId) && (isOwner(adminId) || isAdmin());
+      allow list: if isAdmin();
+      allow create: if isAdmin() && isValidId(adminId) && isValidAdmin(incoming()) && incoming().createdAt == request.time;
+      allow update: if false;
+      allow delete: if isAdmin() && isValidId(adminId);
+    }
+
+    match /pets/{petId} {
+      allow get: if isValidId(petId) && isSignedIn() && (existing().ownerId == request.auth.uid || isAdmin());
+      allow list: if isSignedIn() && (resource.data.ownerId == request.auth.uid || isAdmin());
+      allow create: if isVerifiedUser() &&
+        isValidId(petId) &&
+        isValidPet(incoming()) &&
+        incoming().petId == petId &&
+        incoming().ownerId == request.auth.uid &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time;
+      allow update: if isVerifiedUser() &&
+        isValidId(petId) &&
+        isValidPet(incoming()) &&
+        (
+          (isAdmin() && incoming().updatedAt == request.time && incoming().petId == existing().petId && incoming().ownerId == existing().ownerId && incoming().createdAt == existing().createdAt) ||
+          (existing().ownerId == request.auth.uid &&
+            incoming().petId == existing().petId &&
+            incoming().ownerId == existing().ownerId &&
+            incoming().createdAt == existing().createdAt &&
+            incoming().updatedAt == request.time &&
+            incoming().diff(existing()).affectedKeys().hasOnly(['name', 'petType', 'breed', 'ageYears', 'gender', 'healthInfo', 'feedingInstructions', 'behavioralInfo', 'specialCare', 'photoUrl', 'updatedAt']))
+        );
+      allow delete: if isVerifiedUser() && isValidId(petId) && (existing().ownerId == request.auth.uid || isAdmin());
+    }
+
+    match /caregivers/{caregiverId} {
+      allow get: if isValidId(caregiverId) && isSignedIn() && (caregiverId == request.auth.uid || isAdmin());
+      allow list: if isAdmin();
+      allow create: if isVerifiedUser() &&
+        isValidId(caregiverId) &&
+        isValidCaregiverPrivate(incoming()) &&
+        caregiverId == request.auth.uid &&
+        incoming().caregiverId == caregiverId &&
+        incoming().userId == request.auth.uid &&
+        incoming().verificationStatus == 'pending' &&
+        incoming().accountStatus == 'active' &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time;
+      allow update: if isVerifiedUser() &&
+        isValidId(caregiverId) &&
+        isValidCaregiverPrivate(incoming()) &&
+        (
+          (isAdmin() &&
+            incoming().caregiverId == existing().caregiverId &&
+            incoming().userId == existing().userId &&
+            incoming().createdAt == existing().createdAt &&
+            incoming().updatedAt == request.time &&
+            incoming().diff(existing()).affectedKeys().hasOnly(['verificationStatus', 'accountStatus', 'adminNotes', 'updatedAt'])) ||
+          (caregiverId == request.auth.uid &&
+            incoming().caregiverId == existing().caregiverId &&
+            incoming().userId == existing().userId &&
+            incoming().verificationStatus == existing().verificationStatus &&
+            incoming().accountStatus == existing().accountStatus &&
+            incoming().createdAt == existing().createdAt &&
+            incoming().updatedAt == request.time &&
+            incoming().diff(existing()).affectedKeys().hasOnly(['fullName', 'phone', 'address', 'locality', 'photoUrl', 'bio', 'experienceYears', 'skills', 'servicesOffered', 'availability', 'expectedCharge', 'idDocType', 'idDocNumber', 'idDocUrl', 'updatedAt']))
+        );
+      allow delete: if isAdmin() && isValidId(caregiverId);
+    }
+
+    match /caregiversPublic/{caregiverId} {
+      allow get: if isValidId(caregiverId) && (existing().verificationStatus == 'verified' || isAdmin() || (isSignedIn() && caregiverId == request.auth.uid));
+      allow list: if resource.data.verificationStatus == 'verified' || isAdmin();
+      allow create: if isAdmin() &&
+        isValidId(caregiverId) &&
+        isValidCaregiverPublic(incoming()) &&
+        incoming().caregiverId == caregiverId &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time;
+      allow update: if isVerifiedUser() &&
+        isValidId(caregiverId) &&
+        isValidCaregiverPublic(incoming()) &&
+        (
+          (isAdmin() &&
+            incoming().caregiverId == existing().caregiverId &&
+            incoming().createdAt == existing().createdAt &&
+            incoming().updatedAt == request.time) ||
+          (caregiverId == request.auth.uid &&
+            existing().verificationStatus == 'verified' &&
+            incoming().caregiverId == existing().caregiverId &&
+            incoming().verificationStatus == existing().verificationStatus &&
+            incoming().accountStatus == existing().accountStatus &&
+            incoming().ratingAvg == existing().ratingAvg &&
+            incoming().reviewCount == existing().reviewCount &&
+            incoming().createdAt == existing().createdAt &&
+            incoming().updatedAt == request.time &&
+            incoming().diff(existing()).affectedKeys().hasOnly(['fullName', 'locality', 'photoUrl', 'bio', 'experienceYears', 'skills', 'servicesOffered', 'availability', 'expectedCharge', 'updatedAt']))
+        );
+      allow delete: if isAdmin() && isValidId(caregiverId);
+    }
+
+    match /services/{serviceId} {
+      allow get: if isValidId(serviceId);
+      allow list: if resource.data.isActive == true || isAdmin();
+      allow create: if isAdmin() && isValidId(serviceId) && isValidService(incoming()) && incoming().serviceId == serviceId && incoming().createdAt == request.time && incoming().updatedAt == request.time;
+      allow update: if isAdmin() && isValidId(serviceId) && isValidService(incoming()) && incoming().serviceId == existing().serviceId && incoming().createdAt == existing().createdAt && incoming().updatedAt == request.time;
+      allow delete: if isAdmin() && isValidId(serviceId);
+    }
+
+    match /bookings/{bookingId} {
+      allow get: if isValidId(bookingId) && isSignedIn() && (existing().customerId == request.auth.uid || existing().caregiverId == request.auth.uid || isAdmin());
+      allow list: if isSignedIn() && (resource.data.customerId == request.auth.uid || resource.data.caregiverId == request.auth.uid || isAdmin());
+      allow create: if isVerifiedUser() &&
+        isValidId(bookingId) &&
+        isValidBooking(incoming()) &&
+        incoming().bookingId == bookingId &&
+        incoming().customerId == request.auth.uid &&
+        incoming().status == 'pending' &&
+        incoming().hasReview == false &&
+        incoming().disputeStatus == 'none' &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time &&
+        exists(/databases/$(database)/documents/pets/$(incoming().petId)) &&
+        get(/databases/$(database)/documents/pets/$(incoming().petId)).data.ownerId == request.auth.uid &&
+        exists(/databases/$(database)/documents/caregiversPublic/$(incoming().caregiverId)) &&
+        get(/databases/$(database)/documents/caregiversPublic/$(incoming().caregiverId)).data.verificationStatus == 'verified' &&
+        get(/databases/$(database)/documents/caregiversPublic/$(incoming().caregiverId)).data.accountStatus == 'active';
+      allow update: if isVerifiedUser() &&
+        isValidId(bookingId) &&
+        isValidBooking(incoming()) &&
+        incoming().bookingId == existing().bookingId &&
+        incoming().customerId == existing().customerId &&
+        incoming().caregiverId == existing().caregiverId &&
+        incoming().petId == existing().petId &&
+        incoming().serviceId == existing().serviceId &&
+        incoming().grossAmount == existing().grossAmount &&
+        incoming().caregiverPayout == existing().caregiverPayout &&
+        incoming().platformCommission == existing().platformCommission &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().updatedAt == request.time &&
+        (
+          (isAdmin() && incoming().diff(existing()).affectedKeys().hasOnly(['status', 'paymentStatus', 'disputeStatus', 'disputeNotes', 'updatedAt'])) ||
+          (existing().caregiverId == request.auth.uid &&
+            !(existing().status in ['completed', 'cancelled', 'rejected']) &&
+            incoming().diff(existing()).affectedKeys().hasOnly(['status', 'updatedAt']) &&
+            (
+              (existing().status == 'pending' && incoming().status in ['accepted', 'rejected']) ||
+              (existing().status == 'accepted' && incoming().status in ['confirmed', 'in_progress', 'cancelled']) ||
+              (existing().status == 'confirmed' && incoming().status in ['in_progress', 'completed', 'cancelled']) ||
+              (existing().status == 'in_progress' && incoming().status == 'completed')
+            )) ||
+          (existing().customerId == request.auth.uid &&
+            existing().status in ['pending', 'accepted', 'confirmed'] &&
+            incoming().status == 'cancelled' &&
+            incoming().diff(existing()).affectedKeys().hasOnly(['status', 'paymentStatus', 'updatedAt'])) ||
+          (existing().customerId == request.auth.uid &&
+            existing().status == 'accepted' &&
+            incoming().status in ['accepted', 'confirmed'] &&
+            incoming().paymentStatus in ['pending', 'test_verified'] &&
+            incoming().diff(existing()).affectedKeys().hasOnly(['status', 'paymentStatus', 'updatedAt'])) ||
+          (existing().customerId == request.auth.uid &&
+            existing().status == 'completed' &&
+            existing().hasReview == false &&
+            incoming().hasReview == true &&
+            incoming().diff(existing()).affectedKeys().hasOnly(['hasReview', 'updatedAt'])) ||
+          (existing().customerId == request.auth.uid &&
+            existing().status in ['confirmed', 'in_progress', 'completed'] &&
+            existing().disputeStatus == 'none' &&
+            incoming().disputeStatus == 'open' &&
+            incoming().diff(existing()).affectedKeys().hasOnly(['disputeStatus', 'disputeNotes', 'updatedAt']))
+        );
+      allow delete: if isAdmin() && isValidId(bookingId);
+    }
+
+    match /bookingLocks/{lockId} {
+      allow get: if isValidId(lockId) && isSignedIn();
+      allow list: if isSignedIn() && (resource.data.status == 'active' || isAdmin());
+      allow create: if isVerifiedUser() &&
+        isValidId(lockId) &&
+        isValidBookingLock(incoming()) &&
+        incoming().lockId == lockId &&
+        incoming().customerId == request.auth.uid &&
+        incoming().status == 'active' &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time &&
+        existsAfter(/databases/$(database)/documents/bookings/$(incoming().bookingId));
+      allow update: if isVerifiedUser() &&
+        isValidId(lockId) &&
+        isValidBookingLock(incoming()) &&
+        incoming().lockId == existing().lockId &&
+        incoming().caregiverId == existing().caregiverId &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().updatedAt == request.time &&
+        (
+          isAdmin() ||
+          (existing().status == 'active' &&
+            (existing().customerId == request.auth.uid || existing().caregiverId == request.auth.uid) &&
+            incoming().status == 'released' &&
+            incoming().diff(existing()).affectedKeys().hasOnly(['status', 'updatedAt'])) ||
+          (existing().status == 'released' &&
+            incoming().status == 'active' &&
+            incoming().customerId == request.auth.uid &&
+            incoming().diff(existing()).affectedKeys().hasOnly(['bookingId', 'customerId', 'status', 'updatedAt']) &&
+            existsAfter(/databases/$(database)/documents/bookings/$(incoming().bookingId)))
+        );
+      allow delete: if isAdmin() && isValidId(lockId);
+    }
+
+    match /reviews/{reviewId} {
+      allow get: if isValidId(reviewId);
+      allow list: if resource.data.rating >= 1 && resource.data.rating <= 5;
+      allow create: if isVerifiedUser() &&
+        isValidId(reviewId) &&
+        isValidReview(incoming()) &&
+        incoming().reviewId == reviewId &&
+        incoming().reviewId == incoming().bookingId &&
+        incoming().customerId == request.auth.uid &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time &&
+        exists(/databases/$(database)/documents/bookings/$(incoming().bookingId)) &&
+        get(/databases/$(database)/documents/bookings/$(incoming().bookingId)).data.customerId == request.auth.uid &&
+        get(/databases/$(database)/documents/bookings/$(incoming().bookingId)).data.status == 'completed';
+      allow update, delete: if isAdmin() && isValidId(reviewId);
+    }
+
+    match /notifications/{notificationId} {
+      allow get: if isValidId(notificationId) && isSignedIn() && (existing().userId == request.auth.uid || isAdmin());
+      allow list: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow create: if isVerifiedUser() &&
+        isValidId(notificationId) &&
+        isValidNotification(incoming()) &&
+        incoming().notificationId == notificationId &&
+        incoming().isRead == false &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time;
+      allow update: if isVerifiedUser() &&
+        isValidId(notificationId) &&
+        isValidNotification(incoming()) &&
+        (
+          isAdmin() ||
+          (existing().userId == request.auth.uid &&
+            incoming().notificationId == existing().notificationId &&
+            incoming().userId == existing().userId &&
+            incoming().createdAt == existing().createdAt &&
+            incoming().updatedAt == request.time &&
+            incoming().diff(existing()).affectedKeys().hasOnly(['isRead', 'updatedAt']))
+        );
+      allow delete: if isVerifiedUser() && isValidId(notificationId) && (existing().userId == request.auth.uid || isAdmin());
+    }
+
+    match /payments/{paymentId} {
+      allow get: if isValidId(paymentId) && isSignedIn() && (existing().customerId == request.auth.uid || existing().caregiverId == request.auth.uid || isAdmin());
+      allow list: if isSignedIn() && (resource.data.customerId == request.auth.uid || resource.data.caregiverId == request.auth.uid || isAdmin());
+      allow create: if isVerifiedUser() &&
+        isValidId(paymentId) &&
+        isValidPayment(incoming()) &&
+        incoming().paymentId == paymentId &&
+        incoming().customerId == request.auth.uid &&
+        incoming().status in ['pending', 'test_verified'] &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time;
+      allow update: if isVerifiedUser() &&
+        isValidId(paymentId) &&
+        isValidPayment(incoming()) &&
+        incoming().paymentId == existing().paymentId &&
+        incoming().bookingId == existing().bookingId &&
+        incoming().customerId == existing().customerId &&
+        incoming().caregiverId == existing().caregiverId &&
+        incoming().grossAmount == existing().grossAmount &&
+        incoming().platformCommission == existing().platformCommission &&
+        incoming().caregiverPayout == existing().caregiverPayout &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().updatedAt == request.time &&
+        (
+          isAdmin() ||
+          (existing().customerId == request.auth.uid &&
+            incoming().status in ['test_verified', 'refund_pending'] &&
+            incoming().diff(existing()).affectedKeys().hasOnly(['status', 'referenceCode', 'updatedAt']))
+        );
+      allow delete: if isAdmin() && isValidId(paymentId);
+    }
+
+    match /transactions/{transactionId} {
+      allow get: if isValidId(transactionId) && isSignedIn() && (existing().customerId == request.auth.uid || existing().caregiverId == request.auth.uid || isAdmin());
+      allow list: if isSignedIn() && (resource.data.customerId == request.auth.uid || resource.data.caregiverId == request.auth.uid || isAdmin());
+      allow create: if isVerifiedUser() &&
+        isValidId(transactionId) &&
+        isValidTransaction(incoming()) &&
+        incoming().transactionId == transactionId &&
+        incoming().customerId == request.auth.uid &&
+        incoming().status in ['pending', 'test_verified'] &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time;
+      allow update: if isAdmin() &&
+        isValidId(transactionId) &&
+        isValidTransaction(incoming()) &&
+        incoming().transactionId == existing().transactionId &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().updatedAt == request.time;
+      allow delete: if isAdmin() && isValidId(transactionId);
+    }
+
+    match /platformSettings/{settingId} {
+      allow get: if isValidId(settingId) && (settingId == 'public_config' || isAdmin());
+      allow list: if resource.data.settingId == 'public_config' || isAdmin();
+      allow create: if isAdmin() && isValidId(settingId) && isValidPlatformSetting(incoming()) && incoming().settingId == settingId && incoming().updatedAt == request.time;
+      allow update: if isAdmin() && isValidId(settingId) && isValidPlatformSetting(incoming()) && incoming().settingId == existing().settingId && incoming().updatedAt == request.time;
+      allow delete: if isAdmin() && isValidId(settingId);
+    }
+
+    match /supportTickets/{ticketId} {
+      allow get: if isValidId(ticketId) && isSignedIn() && (existing().userId == request.auth.uid || isAdmin());
+      allow list: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow create: if isVerifiedUser() &&
+        isValidId(ticketId) &&
+        isValidSupportTicket(incoming()) &&
+        incoming().ticketId == ticketId &&
+        incoming().userId == request.auth.uid &&
+        incoming().status == 'open' &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time;
+      allow update: if isAdmin() &&
+        isValidId(ticketId) &&
+        isValidSupportTicket(incoming()) &&
+        incoming().ticketId == existing().ticketId &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().updatedAt == request.time &&
+        incoming().diff(existing()).affectedKeys().hasOnly(['status', 'adminResponse', 'updatedAt']);
+      allow delete: if isAdmin() && isValidId(ticketId);
+    }
+
+    match /promotions/{promoId} {
+      allow get: if isValidId(promoId) && (existing().isActive == true || isAdmin());
+      allow list: if resource.data.isActive == true || isAdmin();
+      allow create: if isAdmin() && isValidId(promoId) && isValidPromotion(incoming()) && incoming().promoId == promoId && incoming().createdAt == request.time && incoming().updatedAt == request.time;
+      allow update: if isAdmin() && isValidId(promoId) && isValidPromotion(incoming()) && incoming().promoId == existing().promoId && incoming().createdAt == existing().createdAt && incoming().updatedAt == request.time;
+      allow delete: if isAdmin() && isValidId(promoId);
+    }
+  }
+}
