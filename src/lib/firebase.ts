@@ -4,14 +4,24 @@ import { doc, getDocFromServer, getFirestore } from 'firebase/firestore';
 import { getDownloadURL, getStorage, ref, uploadBytes } from 'firebase/storage';
 import appletConfig from '../../firebase-applet-config.json';
 
+function sanitizeEnvValue(raw: string | undefined): string | undefined {
+  if (!raw) return undefined;
+  const cleaned = raw.trim().replace(/^["']|["']$/g, '').trim();
+  if (!cleaned || cleaned.startsWith('YOUR_') || cleaned.startsWith('<')) {
+    return undefined;
+  }
+  return cleaned;
+}
+
+const rawApiKey = sanitizeEnvValue(import.meta.env.VITE_FIREBASE_API_KEY);
 const envConfig = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
-  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
-  appId: import.meta.env.VITE_FIREBASE_APP_ID,
-  firestoreDatabaseId: import.meta.env.VITE_FIREBASE_DATABASE_ID,
+  apiKey: rawApiKey && rawApiKey.startsWith('AIza') ? rawApiKey : undefined,
+  authDomain: sanitizeEnvValue(import.meta.env.VITE_FIREBASE_AUTH_DOMAIN),
+  projectId: sanitizeEnvValue(import.meta.env.VITE_FIREBASE_PROJECT_ID),
+  storageBucket: sanitizeEnvValue(import.meta.env.VITE_FIREBASE_STORAGE_BUCKET),
+  messagingSenderId: sanitizeEnvValue(import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID),
+  appId: sanitizeEnvValue(import.meta.env.VITE_FIREBASE_APP_ID),
+  firestoreDatabaseId: sanitizeEnvValue(import.meta.env.VITE_FIREBASE_DATABASE_ID),
 };
 
 const firebaseConfig = {

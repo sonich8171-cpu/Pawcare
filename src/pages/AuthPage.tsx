@@ -41,6 +41,12 @@ export function AuthPage() {
     if (msg.includes('auth/weak-password')) {
       return 'Password must be at least 6 characters long.';
     }
+    if (msg.includes('auth/unauthorized-domain')) {
+      return `Sign-in is blocked because "${window.location.hostname}" is not yet added under Firebase Console → Authentication → Settings → Authorized domains.`;
+    }
+    if (msg.includes('auth/api-key-not-valid')) {
+      return 'Firebase API key configuration error. Check VITE_FIREBASE_API_KEY in hosting environment settings (no surrounding quotes or spaces).';
+    }
     if (msg.includes('auth/popup-closed-by-user')) {
       return 'Google Sign-In popup was closed before completion.';
     }
