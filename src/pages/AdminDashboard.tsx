@@ -9,6 +9,7 @@ import {
   FileSpreadsheet,
   IndianRupee,
   LayoutDashboard,
+  LogOut,
   MessageSquare,
   Plus,
   Search,
@@ -33,6 +34,7 @@ import {
   YAxis,
 } from 'recharts';
 import { ImageWithFallback } from '../components/ImageWithFallback';
+import { useAuth } from '../contexts/AuthContext';
 import { usePublicData } from '../contexts/DataContext';
 import {
   MVP_TARGET_METRICS,
@@ -123,6 +125,7 @@ function downloadCsv(filename: string, headers: string[], rows: unknown[][]) {
 }
 
 export function AdminDashboard() {
+  const { firebaseUser, logout } = useAuth();
   const { platformSettings, reviews } = usePublicData();
 
   const [activeTab, setActiveTab] = useState<AdminTab>('overview');
@@ -719,18 +722,34 @@ export function AdminDashboard() {
 
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-stone-200 pb-5">
         <div>
-          <p className="text-xs font-semibold text-violet-700">Owner & Super Admin Console</p>
+          <p className="text-xs font-semibold text-violet-700">
+            Owner Dashboard · {platformSettings.platformName || 'PawCare'}
+          </p>
           <h1 className="font-display text-3xl font-extrabold text-stone-900">
-            {platformSettings.platformName || 'PawCare'} Operations & Venture Control
+            Owner Operations & Venture Control
           </h1>
+          {firebaseUser?.email && (
+            <p className="text-xs text-stone-500 mt-1">
+              Signed in as Owner: <span className="font-medium text-stone-700">{firebaseUser.email}</span>
+            </p>
+          )}
         </div>
-        <button
-          type="button"
-          onClick={exportBookingsCsv}
-          className="inline-flex items-center gap-2 px-4 py-2 text-xs font-semibold text-stone-800 bg-white border border-stone-300 hover:bg-stone-50 rounded-xl cursor-pointer whitespace-nowrap shrink-0"
-        >
-          <Download className="w-4 h-4" /> Export Bookings CSV
-        </button>
+        <div className="flex flex-wrap items-center gap-2.5 shrink-0">
+          <button
+            type="button"
+            onClick={exportBookingsCsv}
+            className="inline-flex items-center gap-2 px-4 py-2 text-xs font-semibold text-stone-800 bg-white border border-stone-300 hover:bg-stone-50 rounded-xl cursor-pointer whitespace-nowrap"
+          >
+            <Download className="w-4 h-4" /> Export Bookings CSV
+          </button>
+          <button
+            type="button"
+            onClick={logout}
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-stone-700 bg-stone-100 hover:bg-stone-200 rounded-xl cursor-pointer whitespace-nowrap"
+          >
+            <LogOut className="w-3.5 h-3.5" /> Sign Out
+          </button>
+        </div>
       </div>
 
       {/* Horizontal Admin Tab Bar */}

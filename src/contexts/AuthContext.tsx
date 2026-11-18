@@ -10,7 +10,7 @@ import {
   updateProfile,
   type User,
 } from 'firebase/auth';
-import { doc, onSnapshot } from 'firebase/firestore';
+import { doc, getDoc, onSnapshot } from 'firebase/firestore';
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
 import {
   auth,
@@ -62,20 +62,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     let unsubUserDoc: (() => void) | undefined;
     let unsubCaregiverDoc: (() => void) | undefined;
     let unsubAdminDoc: (() => void) | undefined;
+    let isCancelled = false;
 
     const unsubAuth = onAuthStateChanged(auth, async (user) => {
-      setFirebaseUser(user);
-      if (unsubUserDoc) unsubUserDoc();
-      if (unsubCaregiverDoc) unsubCaregiverDoc();
-      if (unsubAdminDoc) unsubAdminDoc();
-
       if (!user) {
+        if (unsubUserDoc) unsubUserDoc();
+        if (unsubCaregiverDoc) unsubCaregiverDoc();
+        if (unsubAdminDoc) unsubAdminDoc();
+        setFirebaseUser(null);
         setUserProfile(null);
         setCaregiverProfile(null);
         setHasAdminDoc(false);
         setAuthLoading(false);
         return;
       }
+
+      setAuthLoading(true);
+      setFirebaseUser(user);
+      if (unsubUserDoc) unsubUserDoc();
+      if (unsubCaregiverDoc) unsubCaregiverDoc();
+      if (unsubAdminDoc) unsubAdminDoc();
 
       if (user.emailVerified) {
         try {
@@ -88,6 +94,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         } catch (err) {
           console.error('Failed to ensure user profile:', err);
         }
+
+        if (isCancelled) return;
 
         unsubUserDoc = onSnapshot(
           doc(db, 'users', user.uid),
@@ -106,20 +114,35 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const isBootstrappedAdmin =
           user.email?.toLowerCase() === BOOTSTRAP_ADMIN_EMAIL.toLowerCase();
         if (isBootstrappedAdmin) {
+          setHasAdminDoc(true);
           seedInitialCatalogIfAdmin().catch(console.error);
         } else {
-          unsubAdminDoc = onSnapshot(
-            doc(db, 'admins', user.uid),
-            (snap) => setHasAdminDoc(snap.exists()),
-            () => setHasAdminDoc(false)
-          );
+          try {
+            const adminSnap = await getDoc(doc(db, 'admins', user.uid));
+            if (!isCancelled) {
+              setHasAdminDoc(adminSnap.exists());
+            }
+          } catch {
+            if (!isCancelled) setHasAdminDoc(false);
+          }
+
+          if (!isCancelled) {
+            unsubAdminDoc = onSnapshot(
+              doc(db, 'admins', user.uid),
+              (snap) => setHasAdminDoc(snap.exists()),
+              () => setHasAdminDoc(false)
+            );
+          }
         }
       }
 
-      setAuthLoading(false);
+      if (!isCancelled) {
+        setAuthLoading(false);
+      }
     });
 
     return () => {
+      isCancelled = true;
       unsubAuth();
       if (unsubUserDoc) unsubUserDoc();
       if (unsubCaregiverDoc) unsubCaregiverDoc();

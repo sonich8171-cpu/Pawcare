@@ -1,14 +1,16 @@
 import { MailWarning, RefreshCw, ShieldAlert } from 'lucide-react';
 import { useState, type ReactNode } from 'react';
-import { Navigate, useLocation } from 'react-router-dom';
+import { Link, Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 
 export function ProtectedRoute({
   children,
   requireAdmin = false,
+  requireCustomer = false,
 }: {
   children: ReactNode;
   requireAdmin?: boolean;
+  requireCustomer?: boolean;
 }) {
   const {
     firebaseUser,
@@ -36,7 +38,8 @@ export function ProtectedRoute({
   }
 
   if (!firebaseUser) {
-    return <Navigate to="/auth" state={{ from: location.pathname }} replace />;
+    const portal = requireAdmin ? 'owner' : 'customer';
+    return <Navigate to={`/auth?portal=${portal}`} state={{ from: location.pathname }} replace />;
   }
 
   if (!isEmailVerified) {
@@ -127,14 +130,33 @@ export function ProtectedRoute({
       <div className="max-w-lg mx-auto my-16 p-8 bg-white border border-stone-200 rounded-2xl text-center space-y-4">
         <ShieldAlert className="w-10 h-10 text-violet-700 mx-auto" />
         <h1 className="font-display text-2xl font-bold text-stone-900">
-          Administrator Access Required
+          Owner Dashboard Access Required
         </h1>
         <p className="text-sm text-stone-600">
-          This area is restricted to authorized PawCare administrators. Unauthorized access is
-          blocked by server-enforced Firestore security rules.
+          This area is restricted to authorized PawCare owners and administrators. Customer accounts
+          cannot access owner operations.
         </p>
+        <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
+          <Link
+            to="/dashboard"
+            className="px-4 py-2 text-sm font-semibold text-white bg-teal-700 hover:bg-teal-800 rounded-xl"
+          >
+            Go to Customer Dashboard
+          </Link>
+          <button
+            type="button"
+            onClick={logout}
+            className="px-4 py-2 text-sm font-medium text-stone-700 bg-stone-100 hover:bg-stone-200 rounded-xl cursor-pointer"
+          >
+            Sign Out
+          </button>
+        </div>
       </div>
     );
+  }
+
+  if (requireCustomer && isAdmin) {
+    return <Navigate to="/owner" replace />;
   }
 
   return <>{children}</>;

@@ -16,8 +16,12 @@ export function Navbar() {
         : 'text-stone-600 border-transparent hover:text-stone-900 hover:border-stone-300'
     }`;
 
-  const dashboardPath = isAdmin ? '/admin' : '/dashboard';
-  const primaryLabel = firebaseUser ? (isAdmin ? 'Admin Console' : 'Dashboard') : 'Sign In';
+  const dashboardPath = isAdmin ? '/owner' : '/dashboard';
+  const primaryLabel = firebaseUser
+    ? isAdmin
+      ? 'Owner Dashboard'
+      : 'Customer Dashboard'
+    : 'Customer Sign In';
 
   return (
     <header className="sticky top-0 z-40 bg-white/95 backdrop-blur border-b border-stone-200">
@@ -45,10 +49,22 @@ export function Navbar() {
         </nav>
 
         <div className="flex items-center gap-3 shrink-0">
+          {!firebaseUser && (
+            <Link
+              to="/auth?portal=owner"
+              className="hidden sm:inline-flex items-center justify-center px-3 py-2 text-xs font-semibold text-stone-600 hover:text-stone-900 rounded-lg transition-colors whitespace-nowrap shrink-0"
+            >
+              Owner Portal
+            </Link>
+          )}
           <button
             type="button"
-            onClick={() => navigate(firebaseUser ? dashboardPath : '/auth')}
-            className="hidden sm:inline-flex items-center justify-center px-4 py-2 text-sm font-semibold text-white bg-teal-700 hover:bg-teal-800 rounded-lg transition-colors whitespace-nowrap shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-600 focus-visible:ring-offset-2 cursor-pointer"
+            onClick={() => navigate(firebaseUser ? dashboardPath : '/auth?portal=customer')}
+            className={`hidden sm:inline-flex items-center justify-center px-4 py-2 text-sm font-semibold text-white rounded-lg transition-colors whitespace-nowrap shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 cursor-pointer ${
+              isAdmin
+                ? 'bg-violet-700 hover:bg-violet-800 focus-visible:ring-violet-600'
+                : 'bg-teal-700 hover:bg-teal-800 focus-visible:ring-teal-600'
+            }`}
           >
             {primaryLabel}
           </button>
@@ -75,12 +91,13 @@ export function Navbar() {
               { to: '/about', label: 'About Us' },
               { to: '/contact', label: 'Contact' },
               ...(firebaseUser
-                ? [
-                    { to: '/dashboard', label: 'Customer Dashboard' },
-                    { to: '/caregiver', label: 'Caregiver Panel' },
-                    ...(isAdmin ? [{ to: '/admin', label: 'Admin Console' }] : []),
-                  ]
-                : []),
+                ? isAdmin
+                  ? [{ to: '/owner', label: 'Owner Dashboard' }]
+                  : [
+                      { to: '/dashboard', label: 'Customer Dashboard' },
+                      { to: '/caregiver', label: 'Caregiver Panel' },
+                    ]
+                : [{ to: '/auth?portal=owner', label: 'Owner Portal' }]),
             ].map((item) => (
               <Link
                 key={item.to}
@@ -97,9 +114,11 @@ export function Navbar() {
               type="button"
               onClick={() => {
                 setMobileOpen(false);
-                navigate(firebaseUser ? dashboardPath : '/auth');
+                navigate(firebaseUser ? dashboardPath : '/auth?portal=customer');
               }}
-              className="w-full py-2.5 px-4 text-sm font-semibold text-white bg-teal-700 hover:bg-teal-800 rounded-lg"
+              className={`w-full py-2.5 px-4 text-sm font-semibold text-white rounded-lg ${
+                isAdmin ? 'bg-violet-700 hover:bg-violet-800' : 'bg-teal-700 hover:bg-teal-800'
+              }`}
             >
               {primaryLabel}
             </button>

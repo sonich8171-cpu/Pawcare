@@ -68,7 +68,7 @@ type CustomerTab =
   | 'settings';
 
 export function CustomerDashboard() {
-  const { firebaseUser, userProfile, isAdmin, resetPassword, logout } = useAuth();
+  const { firebaseUser, userProfile, resetPassword, logout } = useAuth();
   const { services, publicCaregivers, platformSettings, promotions, reviews } = usePublicData();
   const location = useLocation();
   const navigate = useNavigate();
@@ -554,14 +554,6 @@ export function CustomerDashboard() {
               >
                 Switch to Caregiver Panel
               </Link>
-              {isAdmin && (
-                <Link
-                  to="/admin"
-                  className="block w-full text-center py-2 px-3 text-xs font-semibold text-stone-900 bg-stone-100 hover:bg-stone-200 rounded-xl transition-colors"
-                >
-                  Open Super Admin
-                </Link>
-              )}
               <button
                 type="button"
                 onClick={logout}

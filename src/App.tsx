@@ -35,7 +35,7 @@ export default function App() {
                 <Route
                   path="/dashboard"
                   element={
-                    <ProtectedRoute>
+                    <ProtectedRoute requireCustomer>
                       <CustomerDashboard />
                     </ProtectedRoute>
                   }
@@ -43,7 +43,7 @@ export default function App() {
                 <Route
                   path="/dashboard/book"
                   element={
-                    <ProtectedRoute>
+                    <ProtectedRoute requireCustomer>
                       <CustomerDashboard />
                     </ProtectedRoute>
                   }
@@ -53,6 +53,14 @@ export default function App() {
                   element={
                     <ProtectedRoute>
                       <CaregiverDashboard />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/owner"
+                  element={
+                    <ProtectedRoute requireAdmin>
+                      <AdminDashboard />
                     </ProtectedRoute>
                   }
                 />

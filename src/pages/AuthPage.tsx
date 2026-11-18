@@ -1,14 +1,25 @@
-import { ArrowRight, CheckCircle2 } from 'lucide-react';
+import { ArrowRight, CheckCircle2, ShieldCheck, User } from 'lucide-react';
 import { useEffect, useState, type FormEvent } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { PawCareLogo } from '../components/PawCareLogo';
 import { useAuth } from '../contexts/AuthContext';
 
 type AuthMode = 'login' | 'register' | 'reset';
+type AuthPortal = 'customer' | 'owner';
 
 export function AuthPage() {
-  const { firebaseUser, isAdmin, signInWithGoogle, loginWithEmail, registerWithEmail, resetPassword } =
-    useAuth();
+  const {
+    firebaseUser,
+    authLoading,
+    isAdmin,
+    signInWithGoogle,
+    loginWithEmail,
+    registerWithEmail,
+    resetPassword,
+  } = useAuth();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const portal: AuthPortal = searchParams.get('portal') === 'owner' ? 'owner' : 'customer';
+
   const [mode, setMode] = useState<AuthMode>('login');
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -19,13 +30,33 @@ export function AuthPage() {
 
   const navigate = useNavigate();
   const location = useLocation();
-  const redirectTarget = (location.state as { from?: string } | null)?.from || '/dashboard';
+  const rawFrom = (location.state as { from?: string } | null)?.from;
+  const customerTarget =
+    rawFrom && rawFrom !== '/owner' && rawFrom !== '/admin' ? rawFrom : '/dashboard';
+  const ownerTarget = rawFrom === '/admin' ? '/admin' : '/owner';
 
   useEffect(() => {
-    if (firebaseUser) {
-      navigate(isAdmin ? '/admin' : redirectTarget, { replace: true });
+    if (portal === 'owner' && mode === 'register') {
+      setMode('login');
     }
-  }, [firebaseUser, isAdmin, navigate, redirectTarget]);
+  }, [portal, mode]);
+
+  useEffect(() => {
+    if (!authLoading && firebaseUser) {
+      navigate(isAdmin ? ownerTarget : customerTarget, { replace: true });
+    }
+  }, [authLoading, firebaseUser, isAdmin, navigate, ownerTarget, customerTarget]);
+
+  const switchPortal = (nextPortal: AuthPortal) => {
+    setError('');
+    setInfoMsg('');
+    if (nextPortal === 'owner' && mode === 'register') {
+      setMode('login');
+    }
+    setSearchParams(nextPortal === 'owner' ? { portal: 'owner' } : { portal: 'customer' }, {
+      replace: true,
+    });
+  };
 
   const formatAuthError = (err: unknown): string => {
     const msg = err instanceof Error ? err.message : String(err);
@@ -95,6 +126,18 @@ export function AuthPage() {
     }
   };
 
+  const modeTabs =
+    portal === 'owner'
+      ? ([
+          { id: 'login', label: 'Sign In' },
+          { id: 'reset', label: 'Forgot' },
+        ] as const)
+      : ([
+          { id: 'login', label: 'Sign In' },
+          { id: 'register', label: 'Register' },
+          { id: 'reset', label: 'Forgot' },
+        ] as const);
+
   return (
     <div className="min-h-[80vh] flex items-center justify-center px-4 py-12">
       <div className="w-full max-w-md bg-white border border-stone-200 rounded-2xl p-6 sm:p-8 space-y-6">
@@ -103,16 +146,57 @@ export function AuthPage() {
             <PawCareLogo />
           </div>
           <h1 className="font-display text-2xl font-bold text-stone-900 pt-2">
-            {mode === 'login'
-              ? 'Sign in to PawCare'
+            {portal === 'owner'
+              ? mode === 'reset'
+                ? 'Reset owner password'
+                : 'Owner Portal Sign In'
+              : mode === 'login'
+              ? 'Customer Sign In'
               : mode === 'register'
               ? 'Create your PawCare account'
               : 'Reset your password'}
           </h1>
           <p className="text-xs text-stone-500">
-            Access your customer pet dashboard, bookings, or caregiver panel.
+            {portal === 'owner'
+              ? 'Authorized PawCare operations, caregiver verification, and marketplace analytics.'
+              : 'Access your customer pet profiles, bookings, and caregiver panel.'}
           </p>
         </div>
+
+        {/* Portal Switcher */}
+        <div className="grid grid-cols-2 gap-1 p-1 bg-stone-100 rounded-xl text-xs font-semibold">
+          <button
+            type="button"
+            onClick={() => switchPortal('customer')}
+            className={`inline-flex items-center justify-center gap-1.5 py-2 rounded-lg transition-colors cursor-pointer ${
+              portal === 'customer'
+                ? 'bg-white text-teal-800 shadow-sm'
+                : 'text-stone-600 hover:text-stone-900'
+            }`}
+          >
+            <User className="w-3.5 h-3.5" />
+            Customer Portal
+          </button>
+          <button
+            type="button"
+            onClick={() => switchPortal('owner')}
+            className={`inline-flex items-center justify-center gap-1.5 py-2 rounded-lg transition-colors cursor-pointer ${
+              portal === 'owner'
+                ? 'bg-white text-violet-800 shadow-sm'
+                : 'text-stone-600 hover:text-stone-900'
+            }`}
+          >
+            <ShieldCheck className="w-3.5 h-3.5" />
+            Owner Portal
+          </button>
+        </div>
+
+        {portal === 'owner' && (
+          <div className="text-xs text-violet-900 bg-violet-50 border border-violet-200 rounded-xl px-3.5 py-2.5 leading-relaxed">
+            Owner access is restricted to verified PawCare administrators. Customer accounts are
+            automatically routed to the Customer Dashboard.
+          </div>
+        )}
 
         {/* Google Sign-In */}
         <button
@@ -149,14 +233,12 @@ export function AuthPage() {
         </div>
 
         {/* Mode Switch */}
-        <div className="grid grid-cols-3 gap-1 p-1 bg-stone-100 rounded-xl text-xs font-medium">
-          {(
-            [
-              { id: 'login', label: 'Sign In' },
-              { id: 'register', label: 'Register' },
-              { id: 'reset', label: 'Forgot' },
-            ] as const
-          ).map((tab) => (
+        <div
+          className={`grid gap-1 p-1 bg-stone-100 rounded-xl text-xs font-medium ${
+            modeTabs.length === 2 ? 'grid-cols-2' : 'grid-cols-3'
+          }`}
+        >
+          {modeTabs.map((tab) => (
             <button
               key={tab.id}
               type="button"
