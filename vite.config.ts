@@ -11,6 +11,20 @@ export default defineConfig(() => {
         '@': path.resolve(import.meta.dirname, '.'),
       },
     },
+    build: {
+      rollupOptions: {
+        output: {
+          manualChunks(id: string) {
+            if (!id.includes('node_modules')) return undefined;
+            if (id.includes('/firebase/') || id.includes('/@firebase/')) return 'vendor-firebase';
+            if (id.includes('/recharts/') || id.includes('/d3-')) return 'vendor-charts';
+            if (id.includes('/motion/') || id.includes('/framer-motion/')) return 'vendor-motion';
+            if (id.includes('/react-router')) return 'vendor-router';
+            return undefined;
+          },
+        },
+      },
+    },
     server: {
       port: 3000,
       host: '0.0.0.0',

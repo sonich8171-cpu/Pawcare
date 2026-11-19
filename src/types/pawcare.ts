@@ -136,6 +136,7 @@ export interface BookingRecord {
   bookingId: string;
   customerId: string;
   customerName: string;
+  customerEmail?: string;
   customerPhone?: string;
   caregiverId: string;
   caregiverName: string;
@@ -145,17 +146,22 @@ export interface BookingRecord {
   petBreed?: string;
   petInstructions?: string;
   serviceId: string;
+  serviceName?: string;
   serviceTitle: string;
   bookingDate: string;
+  startTime?: string;
+  endTime?: string;
   timeSlot: string;
   locality: string;
   serviceAddress: string;
   specialInstructions?: string;
+  bookingAmount?: number;
   grossAmount: number;
   caregiverPayout: number;
   platformCommission: number;
   paymentMethod: PaymentMethod;
   paymentStatus: PaymentStatus;
+  bookingStatus?: BookingStatus;
   status: BookingStatus;
   hasReview: boolean;
   disputeStatus: DisputeStatus;
@@ -276,3 +282,64 @@ export interface PromotionOffer {
   createdAt?: unknown;
   updatedAt?: unknown;
 }
+
+export type GameId = 'paw_runner' | 'paw_memory' | 'feed_puppy' | 'pet_rescue';
+
+export interface GameSessionRecord {
+  sessionId: string;
+  userId: string;
+  gameId: GameId;
+  score: number;
+  pointsEarned: number;
+  levelReached: number;
+  durationSec: number;
+  createdAt?: unknown;
+}
+
+export interface UserRewardProfile {
+  userId: string;
+  totalPoints: number;
+  gamesPlayed: number;
+  bestScores: Partial<Record<GameId, number>>;
+  achievements: string[];
+  createdAt?: unknown;
+  updatedAt?: unknown;
+}
+
+export interface SupportConversation {
+  conversationId: string;
+  userId: string;
+  userName: string;
+  userEmail: string;
+  userRole: 'customer' | 'caregiver';
+  subject: string;
+  status: 'open' | 'in_review' | 'resolved';
+  lastMessage: string;
+  lastSenderRole: 'user' | 'admin';
+  unreadByAdmin: boolean;
+  unreadByUser: boolean;
+  createdAt?: unknown;
+  updatedAt?: unknown;
+}
+
+export interface SupportConversationMessage {
+  messageId: string;
+  conversationId: string;
+  senderId: string;
+  senderName: string;
+  senderRole: 'user' | 'admin';
+  text: string;
+  createdAt?: unknown;
+}
+
+export interface AdminAuditLog {
+  logId: string;
+  actorUid: string;
+  actorEmail: string;
+  action: string;
+  targetType: string;
+  targetId: string;
+  details: string;
+  createdAt?: unknown;
+}
+

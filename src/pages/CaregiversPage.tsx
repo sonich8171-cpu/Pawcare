@@ -1,4 +1,5 @@
 import { MapPin, Search, ShieldCheck, Star, X } from 'lucide-react';
+import { AnimatePresence, motion } from 'motion/react';
 import { useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { ImageWithFallback } from '../components/ImageWithFallback';
@@ -52,7 +53,7 @@ export function CaregiversPage() {
           </p>
         </div>
         <Link
-          to="/caregiver"
+          to="/register/caregiver"
           className="inline-flex items-center justify-center px-4 py-2.5 text-sm font-semibold text-violet-800 bg-violet-50 hover:bg-violet-100 rounded-xl whitespace-nowrap shrink-0 transition-colors"
         >
           Apply as a Caregiver
@@ -224,7 +225,7 @@ export function CaregiversPage() {
                     </button>
                     <button
                       type="button"
-                      onClick={() => navigate(`/dashboard/book?caregiver=${cg.caregiverId}`)}
+                      onClick={() => navigate(`/customer/dashboard/book?caregiver=${cg.caregiverId}`)}
                       className="px-3.5 py-2 text-xs font-semibold text-white bg-teal-700 hover:bg-teal-800 rounded-lg cursor-pointer"
                     >
                       Book
@@ -238,12 +239,25 @@ export function CaregiversPage() {
       )}
 
       {/* Caregiver Detail Modal */}
-      {selectedCaregiver && (
-        <div className="fixed inset-0 z-50 bg-stone-950/50 flex items-center justify-center p-4">
-          <div className="bg-white border border-stone-200 rounded-2xl max-w-xl w-full max-h-[90vh] overflow-y-auto p-6 space-y-6">
-            <div className="flex items-start justify-between gap-4">
-              <div className="flex items-center gap-4">
-                <div className="w-16 h-16 rounded-full overflow-hidden border border-stone-200 bg-stone-100 shrink-0">
+      <AnimatePresence>
+        {selectedCaregiver && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.18 }}
+            className="fixed inset-0 z-50 bg-stone-950/50 backdrop-blur-[2px] flex items-center justify-center p-4"
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.96, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.96, y: 8 }}
+              transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
+              className="bg-white border border-stone-200 rounded-2xl max-w-xl w-full max-h-[90vh] overflow-y-auto p-6 space-y-6 shadow-xl"
+            >
+              <div className="flex items-start justify-between gap-4">
+                <div className="flex items-center gap-4">
+                  <div className="w-16 h-16 rounded-full overflow-hidden border border-stone-200 bg-stone-100 shrink-0">
                   <ImageWithFallback
                     src={selectedCaregiver.photoUrl}
                     alt={`${selectedCaregiver.fullName} profile photo`}
@@ -333,19 +347,20 @@ export function CaregiversPage() {
               >
                 Close
               </button>
-              <button
-                type="button"
-                onClick={() =>
-                  navigate(`/dashboard/book?caregiver=${selectedCaregiver.caregiverId}`)
-                }
-                className="px-5 py-2 text-sm font-semibold text-white bg-teal-700 hover:bg-teal-800 rounded-xl cursor-pointer"
-              >
-                Book With {selectedCaregiver.fullName.split(' ')[0]}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+                <button
+                  type="button"
+                  onClick={() =>
+                    navigate(`/customer/dashboard/book?caregiver=${selectedCaregiver.caregiverId}`)
+                  }
+                  className="px-5 py-2 text-sm font-semibold text-white bg-teal-700 hover:bg-teal-800 rounded-xl cursor-pointer"
+                >
+                  Book With {selectedCaregiver.fullName.split(' ')[0]}
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

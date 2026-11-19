@@ -7,7 +7,7 @@ export function Footer() {
   const whatsappClean = platformSettings.whatsappNumber.replace(/[^0-9]/g, '');
 
   return (
-    <footer className="bg-white border-t border-stone-200 mt-20">
+    <footer className="bg-white border-t border-stone-200 mt-20 pb-16 md:pb-0">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-14">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-10">
           <div className="md:col-span-1 space-y-4">
@@ -25,22 +25,27 @@ export function Footer() {
             <h3 className="text-sm font-semibold text-stone-900 mb-3">Marketplace</h3>
             <ul className="space-y-2.5 text-sm text-stone-600">
               <li>
-                <Link to="/services" className="hover:text-teal-700 transition-colors">
+                <Link to="/services" className="hover:text-emerald-800 transition-colors">
                   Pet Care Services
                 </Link>
               </li>
               <li>
-                <Link to="/caregivers" className="hover:text-teal-700 transition-colors">
+                <Link to="/caregivers" className="hover:text-emerald-800 transition-colors">
                   Verified Caregivers
                 </Link>
               </li>
               <li>
-                <Link to="/dashboard/book" className="hover:text-teal-700 transition-colors">
+                <Link to="/play" className="hover:text-emerald-800 transition-colors">
+                  Play Zone &amp; Badges
+                </Link>
+              </li>
+              <li>
+                <Link to="/customer/dashboard/book" className="hover:text-emerald-800 transition-colors">
                   Book a Session
                 </Link>
               </li>
               <li>
-                <Link to="/caregiver" className="hover:text-teal-700 transition-colors">
+                <Link to="/register/caregiver" className="hover:text-emerald-800 transition-colors">
                   Become a Caregiver
                 </Link>
               </li>
@@ -51,22 +56,22 @@ export function Footer() {
             <h3 className="text-sm font-semibold text-stone-900 mb-3">Trust & Policies</h3>
             <ul className="space-y-2.5 text-sm text-stone-600">
               <li>
-                <Link to="/about" className="hover:text-teal-700 transition-colors">
+                <Link to="/about" className="hover:text-emerald-800 transition-colors">
                   Our Story & Safety
                 </Link>
               </li>
               <li>
-                <Link to="/legal#cancellation" className="hover:text-teal-700 transition-colors">
+                <Link to="/legal#cancellation" className="hover:text-emerald-800 transition-colors">
                   Cancellation Policy
                 </Link>
               </li>
               <li>
-                <Link to="/legal#privacy" className="hover:text-teal-700 transition-colors">
+                <Link to="/legal#privacy" className="hover:text-emerald-800 transition-colors">
                   Privacy Policy
                 </Link>
               </li>
               <li>
-                <Link to="/legal#terms" className="hover:text-teal-700 transition-colors">
+                <Link to="/legal#terms" className="hover:text-emerald-800 transition-colors">
                   Terms & Conditions
                 </Link>
               </li>
@@ -84,13 +89,13 @@ export function Footer() {
                   )}`}
                   target="_blank"
                   rel="noreferrer"
-                  className="text-teal-700 font-medium hover:underline"
+                  className="text-emerald-800 font-medium hover:underline"
                 >
                   WhatsApp Care Desk
                 </a>
               </li>
               <li>
-                <Link to="/contact" className="hover:text-teal-700 transition-colors">
+                <Link to="/contact" className="hover:text-emerald-800 transition-colors">
                   Submit Support Inquiry
                 </Link>
               </li>

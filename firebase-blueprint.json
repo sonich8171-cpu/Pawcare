@@ -136,6 +136,7 @@
         "bookingId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
         "customerId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
         "customerName": { "type": "string", "minLength": 2, "maxLength": 100 },
+        "customerEmail": { "type": "string", "format": "email", "maxLength": 160 },
         "customerPhone": { "type": "string", "maxLength": 20 },
         "caregiverId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
         "caregiverName": { "type": "string", "minLength": 2, "maxLength": 100 },
@@ -145,17 +146,22 @@
         "petBreed": { "type": "string", "maxLength": 80 },
         "petInstructions": { "type": "string", "maxLength": 1000 },
         "serviceId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "serviceName": { "type": "string", "minLength": 2, "maxLength": 100 },
         "serviceTitle": { "type": "string", "minLength": 2, "maxLength": 100 },
         "bookingDate": { "type": "string", "minLength": 10, "maxLength": 10, "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$" },
+        "startTime": { "type": "string", "minLength": 4, "maxLength": 16 },
+        "endTime": { "type": "string", "minLength": 4, "maxLength": 16 },
         "timeSlot": { "type": "string", "minLength": 3, "maxLength": 40 },
         "locality": { "type": "string", "minLength": 2, "maxLength": 100 },
         "serviceAddress": { "type": "string", "minLength": 5, "maxLength": 300 },
         "specialInstructions": { "type": "string", "maxLength": 600 },
+        "bookingAmount": { "type": "number" },
         "grossAmount": { "type": "number" },
         "caregiverPayout": { "type": "number" },
         "platformCommission": { "type": "number" },
         "paymentMethod": { "type": "string", "enum": ["cash", "upi", "online_gateway"] },
         "paymentStatus": { "type": "string", "enum": ["pending", "test_verified", "paid", "refund_pending", "refunded"] },
+        "bookingStatus": { "type": "string", "enum": ["pending", "accepted", "rejected", "confirmed", "in_progress", "completed", "cancelled"] },
         "status": { "type": "string", "enum": ["pending", "accepted", "rejected", "confirmed", "in_progress", "completed", "cancelled"] },
         "hasReview": { "type": "boolean" },
         "disputeStatus": { "type": "string", "enum": ["none", "open", "resolved"] },
@@ -163,7 +169,7 @@
         "createdAt": { "type": "string", "format": "date-time" },
         "updatedAt": { "type": "string", "format": "date-time" }
       },
-      "required": ["bookingId", "customerId", "customerName", "caregiverId", "caregiverName", "petId", "petName", "serviceId", "serviceTitle", "bookingDate", "timeSlot", "locality", "serviceAddress", "grossAmount", "caregiverPayout", "platformCommission", "paymentMethod", "paymentStatus", "status", "hasReview", "disputeStatus", "createdAt", "updatedAt"]
+      "required": ["bookingId", "customerId", "customerName", "customerEmail", "caregiverId", "caregiverName", "petId", "petName", "serviceId", "serviceName", "bookingDate", "startTime", "endTime", "timeSlot", "locality", "serviceAddress", "bookingAmount", "grossAmount", "caregiverPayout", "platformCommission", "paymentMethod", "paymentStatus", "bookingStatus", "status", "hasReview", "disputeStatus", "createdAt", "updatedAt"]
     },
     "BookingLock": {
       "title": "BookingLock",
@@ -175,6 +181,8 @@
         "caregiverId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
         "customerId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
         "bookingDate": { "type": "string", "minLength": 10, "maxLength": 10 },
+        "startTime": { "type": "string", "maxLength": 16 },
+        "endTime": { "type": "string", "maxLength": 16 },
         "timeSlot": { "type": "string", "minLength": 3, "maxLength": 40 },
         "status": { "type": "string", "enum": ["active", "released"] },
         "createdAt": { "type": "string", "format": "date-time" },
@@ -316,6 +324,89 @@
         "updatedAt": { "type": "string", "format": "date-time" }
       },
       "required": ["promoId", "code", "title", "discountPercent", "isActive", "createdAt", "updatedAt"]
+    },
+    "GameSession": {
+      "title": "GameSession",
+      "description": "Completed PawCare Play Zone mini-game run.",
+      "type": "object",
+      "properties": {
+        "sessionId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "userId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "gameId": { "type": "string", "enum": ["paw_runner", "paw_memory", "feed_puppy", "pet_rescue"] },
+        "score": { "type": "number" },
+        "pointsEarned": { "type": "number" },
+        "levelReached": { "type": "number" },
+        "durationSec": { "type": "number" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["sessionId", "userId", "gameId", "score", "pointsEarned", "levelReached", "durationSec", "createdAt"]
+    },
+    "UserRewards": {
+      "title": "UserRewards",
+      "description": "Customer Play Zone entertainment points, best scores, and unlocked community achievements.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "totalPoints": { "type": "number" },
+        "gamesPlayed": { "type": "number" },
+        "bestScores": { "type": "object" },
+        "achievements": { "type": "array" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "totalPoints", "gamesPlayed", "bestScores", "achievements", "createdAt", "updatedAt"]
+    },
+    "SupportConversation": {
+      "title": "SupportConversation",
+      "description": "Real-time customer/caregiver to admin support conversation thread.",
+      "type": "object",
+      "properties": {
+        "conversationId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "userId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "userName": { "type": "string", "minLength": 2, "maxLength": 100 },
+        "userEmail": { "type": "string", "format": "email", "maxLength": 160 },
+        "userRole": { "type": "string", "enum": ["customer", "caregiver"] },
+        "subject": { "type": "string", "minLength": 2, "maxLength": 150 },
+        "status": { "type": "string", "enum": ["open", "in_review", "resolved"] },
+        "lastMessage": { "type": "string", "minLength": 1, "maxLength": 800 },
+        "lastSenderRole": { "type": "string", "enum": ["user", "admin"] },
+        "unreadByAdmin": { "type": "boolean" },
+        "unreadByUser": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["conversationId", "userId", "userName", "userEmail", "userRole", "subject", "status", "lastMessage", "lastSenderRole", "unreadByAdmin", "unreadByUser", "createdAt", "updatedAt"]
+    },
+    "SupportMessage": {
+      "title": "SupportMessage",
+      "description": "Individual message inside a support conversation.",
+      "type": "object",
+      "properties": {
+        "messageId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "conversationId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "senderId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "senderName": { "type": "string", "minLength": 2, "maxLength": 100 },
+        "senderRole": { "type": "string", "enum": ["user", "admin"] },
+        "text": { "type": "string", "minLength": 1, "maxLength": 1000 },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["messageId", "conversationId", "senderId", "senderName", "senderRole", "text", "createdAt"]
+    },
+    "AuditLog": {
+      "title": "AuditLog",
+      "description": "Immutable administrator action audit log.",
+      "type": "object",
+      "properties": {
+        "logId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "actorUid": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "actorEmail": { "type": "string", "format": "email", "maxLength": 160 },
+        "action": { "type": "string", "minLength": 2, "maxLength": 80 },
+        "targetType": { "type": "string", "minLength": 2, "maxLength": 60 },
+        "targetId": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "details": { "type": "string", "minLength": 2, "maxLength": 500 },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["logId", "actorUid", "actorEmail", "action", "targetType", "targetId", "details", "createdAt"]
     }
   },
   "firestore": {
@@ -382,6 +473,26 @@
     "/promotions/{promoId}": {
       "schema": { "$ref": "#/entities/Promotion" },
       "description": "Active promotional offers managed by admin."
+    },
+    "/gameSessions/{sessionId}": {
+      "schema": { "$ref": "#/entities/GameSession" },
+      "description": "Completed PawCare Play Zone mini-game sessions."
+    },
+    "/rewards/{userId}": {
+      "schema": { "$ref": "#/entities/UserRewards" },
+      "description": "Per-user Play Zone points and unlocked community badges."
+    },
+    "/conversations/{conversationId}": {
+      "schema": { "$ref": "#/entities/SupportConversation" },
+      "description": "Live customer/caregiver to admin support threads."
+    },
+    "/conversations/{conversationId}/messages/{messageId}": {
+      "schema": { "$ref": "#/entities/SupportMessage" },
+      "description": "Individual messages within a support conversation."
+    },
+    "/auditLogs/{logId}": {
+      "schema": { "$ref": "#/entities/AuditLog" },
+      "description": "Immutable administrator action audit trail."
     }
   }
 }

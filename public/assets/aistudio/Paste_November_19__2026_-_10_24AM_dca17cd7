@@ -1,0 +1,1670 @@
+
+
+# PAWCARE — ULTRA PREMIUM DASHBOARD, ADMIN CONTROL CENTER \& INTERACTIVE GAMING MASTER PROMPT
+
+## VISUAL REFERENCE: PROVIDED DEVASHISH SUNLIT HOME STAY MOBILE SCREENSHOT
+
+### PROJECT: PAWCARE — TRUSTED PET CARE PLATFORM
+
+### LOCATION: DEHRADUN, UTTARAKHAND, INDIA
+
+### BACKEND: FIREBASE
+
+# PAWCARE — CRITICAL AUTHENTICATION FIX, OPEN CUSTOMER REGISTRATION & PREMIUM DASHBOARD UPGRADE
+
+## IMPORTANT: FIX THE EXISTING APPLICATION — DO NOT REBUILD FROM SCRATCH
+
+Act as a senior Firebase Authentication Engineer, Full-Stack Developer, Security Architect and Premium UI/UX Designer.
+
+The existing PawCare application currently displays:
+
+**"Administrator Access Required"**
+
+when a user attempts to access the application using another Gmail account.
+
+This is not acceptable for a customer-facing pet-care platform.
+
+Your first priority is to inspect the existing source code, identify the exact cause of this access problem and fix the authentication and role-routing architecture.
+
+Preserve all existing working PawCare features, graphics, games, branding, Firebase configuration and deployment setup.
+
+Do not delete or replace the existing project.
+
+# 1. FIX THE CUSTOMER GOOGLE LOGIN PROBLEM — HIGHEST PRIORITY
+
+Any customer with a valid Google account must be able to register and log in without requiring administrator approval.
+
+Implement public customer self-registration.
+
+### Required customer login flow
+
+1. Customer opens PawCare.
+2. Customer clicks "Continue with Google".
+3. Google Authentication opens.
+4. Customer selects any valid Google account.
+5. Firebase authenticates that account.
+6. The application checks whether a user profile already exists.
+7. If it is a first-time login, automatically create a customer profile in Firestore.
+8. Assign the default role `customer`.
+9. Complete the login process.
+10. Redirect the customer to the Customer Dashboard.
+
+**Do not require admin approval for ordinary customer registration or login.**
+
+Do not show "Administrator Access Required" to customers.
+
+Do not require a customer to be manually added to an admin list.
+
+Do not restrict customer login to one Gmail address or a hardcoded email allowlist.
+
+### Important implementation details
+
+Use Firebase Authentication with Google provider.
+
+Implement a reliable first-login profile creation flow.
+
+Use the authenticated Firebase UID as the unique user identity.
+
+Create the Firestore customer profile safely using a transaction or an appropriate trusted backend operation.
+
+Handle:
+- First-time Google login.
+- Returning Google login.
+- Existing email/password customer account.
+- Logout and login with another Google account.
+- Missing Firestore profile.
+- Network errors.
+- Cancelled Google login.
+- Disabled or deleted accounts.
+
+Do not create duplicate user profiles when the same customer logs in repeatedly.
+
+If Google Authentication succeeds but profile creation fails, show a clear retry option and do not falsely report successful setup.
+
+# 2. SEPARATE CUSTOMER, CAREGIVER AND ADMIN ACCESS
+
+Implement three independent roles:
+
+- `customer`
+- `caregiver`
+- `admin`
+
+### Customer permissions
+
+Customers must:
+- Register independently.
+- Log in using any valid Google account.
+- Log in using email and password.
+- Access their own Customer Dashboard.
+- Create and manage their own pet profiles.
+- Submit booking requests.
+- View their own bookings.
+- Play PawCare games.
+- View their own game history and rewards.
+- Contact support.
+- Edit permitted profile information.
+
+Customers must not need administrator approval to create an ordinary customer account.
+
+### Caregiver permissions
+
+Caregivers can register and submit an application.
+
+Caregiver applications may require admin approval before the caregiver can accept or perform bookings.
+
+### Admin permissions
+
+Admin access must remain protected.
+
+Only explicitly provisioned administrators may access the Admin Control Center.
+
+Google login does not automatically make a person an admin.
+
+Never assign the admin role based on:
+- A frontend condition.
+- A user-editable Firestore field.
+- Local storage.
+- A query parameter.
+- A hardcoded client-side email check.
+
+Use Firebase custom claims or an equally secure server-side authorization mechanism.
+
+# 3. FIX THE ADMINISTRATOR ACCESS REQUIRED ERROR
+
+Inspect the entire existing authentication and route-protection implementation.
+
+Specifically investigate:
+- Login component.
+- Google sign-in callback.
+- Firebase authentication state listener.
+- User profile creation.
+- Firestore user lookup.
+- Role assignment.
+- Protected routes.
+- Admin route guard.
+- Customer route guard.
+- Dashboard redirects.
+- Logout and account switching.
+- Any hardcoded administrator email checks.
+- Any global admin-only access condition.
+
+### Critical routing rule
+
+The Admin Access Guard must protect only Admin routes.
+
+It must never wrap the entire public application or block customer pages.
+
+Implement this routing structure:
+
+Public pages:
+- Home.
+- Services.
+- About.
+- Contact.
+- Login.
+- Customer Registration.
+
+Customer-only pages:
+- Customer Dashboard.
+- My Pets.
+- My Bookings.
+- Games.
+- Rewards.
+- Customer Profile.
+
+Caregiver-only pages:
+- Caregiver Dashboard.
+- Caregiver Application.
+- Availability.
+- Assigned Bookings.
+
+Admin-only pages:
+- Admin Control Center.
+- Customer Management.
+- Caregiver Approvals.
+- Booking Management.
+- Service Management.
+- Pricing Management.
+- Support Inbox.
+- Analytics.
+- Audit Logs.
+
+### Correct redirect behavior
+
+- Unauthenticated user opening a protected page → Login.
+- New Google customer → Automatically create customer profile → Customer Dashboard.
+- Existing customer → Customer Dashboard.
+- Approved caregiver → Caregiver Dashboard.
+- Pending caregiver → Caregiver Application Status page.
+- Authorized admin → Admin Control Center.
+- Customer opening an admin URL → Access Denied or redirect to Customer Dashboard.
+- Caregiver opening an admin URL → Access Denied or redirect to Caregiver Dashboard.
+
+Show a loading screen while authentication and role information are being resolved.
+
+Do not briefly display an incorrect access-denied screen while Firebase is still loading.
+
+# 4. FIREBASE CONFIGURATION & GOOGLE AUTHENTICATION CHECK
+
+Inspect the existing Firebase project configuration.
+
+Do not replace valid configuration unnecessarily.
+
+Verify:
+- Firebase project initialization.
+- Authentication initialization.
+- Google provider initialization.
+- Google sign-in method.
+- Auth state persistence.
+- Firestore initialization.
+- Firestore profile reads and writes.
+- Firebase authorized domains.
+- Correct production domain configuration.
+- Error handling.
+
+Ensure the deployed Vercel domain is added to Firebase Authentication authorized domains.
+
+Check for common Google login errors:
+- `auth/unauthorized-domain`
+- `auth/popup-blocked`
+- `auth/popup-closed-by-user`
+- `auth/account-exists-with-different-credential`
+- `auth/network-request-failed`
+- `auth/operation-not-allowed`
+
+Handle mobile browser popup restrictions appropriately. Use a supported redirect-based Google authentication fallback when needed.
+
+Do not hide Firebase errors. Display helpful user-facing messages and retain diagnostic details in secure development logs.
+
+Never expose private credentials.
+
+# 5. EXISTING CUSTOMER ACCOUNT COMPATIBILITY
+
+Do not break existing registered customer accounts.
+
+If a Google account already exists in Firebase Authentication but the corresponding Firestore profile is missing, repair the profile safely.
+
+If an email/password account and a Google account use the same email, handle account linking carefully using Firebase-supported account linking procedures.
+
+Do not silently create duplicate customer identities or overwrite an existing account's role.
+
+A customer must never gain administrator privileges because their email matches an existing administrator's email.
+
+Preserve existing customer booking history and pet records by using stable Firebase UIDs.
+
+# 6. CUSTOMER DASHBOARD — PREMIUM MOBILE-FIRST DESIGN
+
+Create a polished customer dashboard inspired by the previously supplied Devashish Sunlit Home Stay mobile screenshot.
+
+Keep the PawCare brand identity original.
+
+Use:
+- Forest green.
+- Emerald.
+- Warm cream.
+- Ivory.
+- Gold accents.
+- Premium pet photography.
+- Elegant rounded cards.
+- Smooth transitions.
+- Responsive mobile layout.
+
+### Dashboard header
+
+Display:
+"Welcome back, [Customer Name]!"
+
+Include:
+- Customer profile image.
+- Notification icon.
+- Profile menu.
+- Logout.
+
+### Dashboard sections
+
+1. My Pets.
+2. Book Pet Care.
+3. Upcoming Bookings.
+4. Booking History.
+5. Find Caregiver.
+6. PawCare Play Zone.
+7. My Rewards.
+8. Message Support.
+9. Account Settings.
+
+Show real Firebase data.
+
+If a customer has no pets, display a friendly empty state with an "Add Your First Pet" button.
+
+If a customer has no bookings, display "No bookings yet" and a "Book Pet Care" action.
+
+Do not display invented booking history, fake caregivers or fake ratings.
+
+# 7. ADMIN CONTROL CENTER — PREMIUM PROFESSIONAL DASHBOARD
+
+Keep the Admin Control Center separate from customer pages.
+
+Create a high-quality desktop and mobile dashboard.
+
+### KPI cards
+
+- Total Customers.
+- Total Caregivers.
+- Pending Caregiver Applications.
+- Approved Caregivers.
+- Total Bookings.
+- Pending Bookings.
+- Confirmed Bookings.
+- Completed Bookings.
+
+### Admin modules
+
+- Customer Management.
+- Caregiver Management.
+- Booking Management.
+- Service Management.
+- Pricing Management.
+- Support Inbox.
+- Notifications.
+- Analytics.
+- Audit Logs.
+- Website Settings.
+
+All metrics must use actual Firestore data.
+
+All privileged actions must be validated by trusted backend authorization.
+
+### Admin provisioning
+
+Create a secure initial-admin setup procedure.
+
+Existing authorized administrators should be able to manage additional admin access only through a trusted, protected backend workflow.
+
+Never let ordinary customers approve themselves as admins.
+
+Never make the entire application administrator-only.
+
+# 8. PAWCARE GAMES — KEEP EXISTING GAMES AND ADD ONE MORE
+
+Preserve the existing three PawCare games and improve their visual quality and responsiveness.
+
+Add one additional fully playable game:
+
+## GAME 4 — PAWCARE PET RESCUE ADVENTURE
+
+Create a colourful, polished, 2D pet rescue game.
+
+### Game concept
+
+The player controls a cute puppy exploring a beautiful garden and helping lost cartoon pets reach a safe rescue point.
+
+### Graphics
+
+- Beautiful animated garden.
+- Cute puppy character.
+- Cartoon cats and dogs.
+- Flowers and trees.
+- Moving clouds.
+- Paw-print collectibles.
+- Friendly obstacles.
+- Animated rescue animations.
+- Attractive victory effects.
+
+### Gameplay
+
+- Use arrow keys or WASD on desktop.
+- Use on-screen directional controls on mobile.
+- Collect paw tokens.
+- Find and reach the rescue point.
+- Avoid obstacles.
+- Complete each level within a target time.
+- Increase difficulty gradually.
+
+### Features
+
+- Start screen.
+- Instructions.
+- Level selection.
+- Pause and resume.
+- Restart.
+- Score.
+- Timer.
+- Sound toggle.
+- Level completion screen.
+- Best score.
+
+Make the game genuinely playable.
+
+Do not create a static image or decorative-only game interface.
+
+Keep the game lightweight and optimized for Android phones.
+
+Game rewards must be validated server-side if they have real business value.
+
+# 9. PAWCARE AI AND MESSAGE ADMIN
+
+Preserve two separate floating buttons:
+
+1. ASK PAWCARE AI.
+2. MESSAGE ADMIN.
+
+AI must not pretend to diagnose pets or confirm bookings.
+
+Customer support messages must be saved in Firestore and visible to authorized administrators.
+
+Customers must see genuine admin replies.
+
+Keep both buttons responsive and prevent overlap with mobile bottom navigation.
+
+# 10. FIREBASE SECURITY RULES
+
+Review existing Firestore and Storage security rules.
+
+Implement proper role-based access:
+
+- Customers can access only their own customer records, pets, bookings and conversations.
+- Caregivers can access their own profile and assigned booking information.
+- Admins can perform privileged operations only after trusted role verification.
+- Customers cannot change their own role.
+- Customers cannot access admin analytics or private records.
+- Unauthenticated users cannot access private records.
+- Users cannot manipulate booking prices or privileged booking statuses.
+
+Do not use open test-mode rules in production.
+
+Use Firebase custom claims or trusted backend authorization for admin privileges.
+
+# 11. PRESERVE THE EXISTING DESIGN, GAMES AND PROJECT
+
+This is a targeted upgrade, not a fresh rebuild.
+
+Before making changes:
+1. Inspect the existing codebase.
+2. Identify the current authentication architecture.
+3. Identify existing Firebase collections.
+4. Identify existing dashboard routes.
+5. Identify existing games.
+6. Identify current deployment configuration.
+7. Identify the precise cause of the access error.
+
+Then implement the smallest safe changes needed to fix authentication and role routing.
+
+Do not delete existing customer data.
+
+Do not delete existing working games.
+
+Do not remove the premium graphics, animations or previous dashboard improvements.
+
+Do not replace the existing Firebase project.
+
+# 12. TESTING — MANDATORY ACCEPTANCE TESTS
+
+Use separate test accounts for each role.
+
+### Test A — New Customer Gmail
+
+1. Open the deployed website.
+2. Sign in with a previously unused valid Google account.
+3. Confirm Google authentication succeeds.
+4. Confirm a customer profile is created.
+5. Confirm default role is customer.
+6. Confirm Customer Dashboard opens.
+7. Confirm no admin approval is requested.
+
+### Test B — Returning Customer
+
+1. Sign out.
+2. Sign in again using the same Gmail.
+3. Confirm the same customer profile is loaded.
+4. Confirm existing pets and bookings remain accessible.
+5. Confirm no duplicate profile is created.
+
+### Test C — Different Customer Gmail
+
+1. Sign out.
+2. Sign in using a second valid Google account.
+3. Confirm a separate customer profile is created.
+4. Confirm the second customer can access their own dashboard.
+5. Confirm they cannot access the first customer's private data.
+
+### Test D — Customer Tries Admin Access
+
+1. Sign in as a normal customer.
+2. Open the Admin URL manually.
+3. Confirm access is denied.
+4. Confirm the customer dashboard remains accessible.
+
+### Test E — Authorized Admin
+
+1. Sign in using an authorized admin account.
+2. Confirm Admin Control Center opens.
+3. Confirm admin data and tools load.
+4. Confirm privileged actions are authorized.
+
+### Test F — Caregiver
+
+1. Submit a caregiver application.
+2. Confirm pending application status.
+3. Confirm ordinary customer access remains available where applicable.
+4. Confirm caregiver operational permissions require approval.
+
+### Test G — Mobile and Vercel
+
+Test Google login on the actual production Vercel domain using an Android mobile browser.
+
+Verify:
+- Google sign-in.
+- Redirect callback.
+- Profile creation.
+- Customer dashboard.
+- Admin access protection.
+- Logout.
+- Switching between Google accounts.
+
+Fix all critical issues found.
+
+# 13. FINAL DELIVERY REPORT
+
+At the end, clearly report:
+
+- Root cause of the Administrator Access Required error.
+- Files and components modified.
+- Google Authentication status.
+- New customer registration status.
+- Customer profile creation status.
+- Existing account compatibility.
+- Customer dashboard status.
+- Admin dashboard status.
+- Firebase security rules status.
+- Fourth game status.
+- Production Vercel login test result.
+- Any remaining manual configuration.
+
+Do not claim success without testing.
+
+# FINAL NON-NEGOTIABLE REQUIREMENT
+
+**EVERY NORMAL CUSTOMER MUST BE ABLE TO REGISTER AND LOG IN USING THEIR OWN VALID GOOGLE ACCOUNT WITHOUT ADMIN APPROVAL.**
+
+The Admin Control Center must remain protected for authorized administrators only.
+
+Do not confuse customer registration with administrator provisioning.
+
+Do not make the whole PawCare application admin-only.
+
+Fix the actual cause of the problem in the existing code, preserve all working features and deliver a secure, fully functional customer and admin experience.
+
+### AUTHENTICATION: GOOGLE LOGIN + EMAIL/PASSWORD
+
+### SOURCE CONTROL: GITHUB
+
+### DEPLOYMENT: VERCEL
+
+---
+
+# 1\. YOUR ROLE
+
+Act as an elite product development team consisting of:
+
+- Senior Full-Stack Developer.
+- Premium UI/UX Designer.
+- Creative Director.
+- Dashboard Design Specialist.
+- Motion Graphics Designer.
+- Game UI and Interaction Designer.
+- Firebase Architect.
+- Security Engineer.
+- React and TypeScript Developer.
+- Performance Optimization Specialist.
+
+Upgrade the existing PawCare application into a premium, fully functional pet-care platform.
+
+The user has provided a mobile screenshot of Devashish Sunlit Home Stay as a visual reference.
+
+Study its visual hierarchy, layout, mobile experience, premium graphics, floating controls, buttons, animations and bottom navigation.
+
+Use the same quality of visual presentation and interaction design for PawCare, but create a completely original pet-care brand identity.
+
+Do not copy hotel-related content, branding, photographs or functionality.
+
+**Most important: Build the actual working application, not just a visual mockup.**
+
+---
+
+# 2\. PAWCARE VISUAL IDENTITY — PREMIUM PET WORLD
+
+Create a unique design system called:
+
+**PAWCARE PREMIUM PET EXPERIENCE**
+
+The overall experience should feel like a modern, trusted, premium pet-care startup.
+
+### Colour palette
+
+- Deep Forest Green: primary brand colour.
+- Emerald Green: active controls and highlights.
+- Warm Cream: main background.
+- Soft Ivory: cards and panels.
+- Golden Yellow: premium accents.
+- Warm Orange: important actions.
+- Charcoal: headings and text.
+- Soft Mint: success states.
+
+Use gradients, beautiful shadows, subtle glass effects and premium card surfaces.
+
+The design must be warm, friendly, trustworthy and visually impressive.
+
+### Brand graphics
+
+Create:
+
+- Original PawCare logo.
+- Premium paw-print symbol.
+- Animated paw decorations.
+- Attractive dog and cat illustrations.
+- Pet-care service illustrations.
+- Premium icons.
+- Consistent typography.
+- Responsive illustrations.
+
+Use authentic, authorized pet photographs wherever possible.
+
+If actual caregiver or customer photographs are not available, use illustrative imagery and never present it as a real verified person.
+
+---
+
+# 3\. FOLLOW THE PROVIDED SCREENSHOT'S DESIGN LANGUAGE
+
+Use the supplied Devashish Sunlit Home Stay screenshot as a structural and visual reference.
+
+Reinterpret its strongest design elements for PawCare.
+
+### A. Premium top announcement strip
+
+Create a compact top strip containing:
+
+- PawCare announcements.
+- Current offers, if configured.
+- Service area information.
+- Important platform updates.
+
+### B. Premium main navigation
+
+Create:
+
+- PawCare logo.
+- Home.
+- Services.
+- Find Caregiver.
+- Games.
+- Rewards.
+- Login/Profile.
+- Admin Corner for authorized administrators only.
+
+Use a responsive desktop header and a compact mobile header.
+
+### C. Cinematic hero section
+
+Create a visually powerful hero with high-quality dog and cat photography.
+
+Headline:
+
+**Your Pet Deserves Love, Care \& Happiness — Every Day.**
+
+Supporting text:
+
+Find trusted pet-care support when you are busy, working, studying or travelling.
+
+Primary CTA: Find Pet Care
+
+Secondary CTA: Become a Caregiver
+
+Additional highlights:
+
+- Trusted Caregiver Profiles.
+- Pet Sitting.
+- Pet Feeding.
+- Dog Walking.
+- Basic Pet Care.
+
+Use:
+
+- Beautiful full-background pet photography.
+- Deep forest-green gradient overlay.
+- Elegant text animations.
+- Golden and mint highlights.
+- Floating paw decorations.
+- Smooth image reveal.
+- Premium button animations.
+
+### D. Floating actions
+
+Create two independent floating buttons:
+
+1. ASK PAWCARE AI
+2. MESSAGE ADMIN
+
+They must remain separate and must not overlap.
+
+### E. Bottom mobile navigation
+
+Create a polished mobile bottom navigation similar in usability to the screenshot.
+
+Tabs:
+
+- Home.
+- Services.
+- Bookings.
+- Play.
+- Profile.
+
+For authorized administrators, show a separate admin navigation experience.
+
+Use active tab indicators, subtle transitions and clear icons.
+
+Do not squeeze too many options into mobile navigation.
+
+---
+
+# 4\. CUSTOMER DASHBOARD — PREMIUM PET OWNER EXPERIENCE
+
+Build a dedicated customer dashboard after login.
+
+The dashboard should feel like a beautiful pet-care application.
+
+### Dashboard welcome section
+
+Display:
+
+"Welcome back, \[Customer Name\]!"
+
+Show:
+
+- Customer profile picture.
+- A friendly pet-themed greeting.
+- Customer's saved pets.
+- Quick actions.
+
+### Customer dashboard cards
+
+Create beautiful interactive cards for:
+
+1. My Pets.
+2. Book Pet Care.
+3. Upcoming Bookings.
+4. Booking History.
+5. Find a Caregiver.
+6. PawCare Games.
+7. My Rewards.
+8. Notifications.
+9. Message Support.
+10. Account Settings.
+
+### My Pets section
+
+Show pet profile cards with:
+
+- Pet photo.
+- Pet name.
+- Animal type.
+- Breed.
+- Age.
+- Special care instructions.
+
+Actions:
+
+- Add Pet.
+- Edit Pet.
+- View Pet Profile.
+- Remove Pet.
+
+Allow customers to manage only their own pets.
+
+### Upcoming booking widget
+
+Display:
+
+- Booking ID.
+- Service.
+- Pet name.
+- Date and time.
+- Assigned caregiver, when assigned.
+- Current booking status.
+
+Use visually distinct status indicators.
+
+### Quick booking card
+
+Provide a prominent "Book Pet Care" card.
+
+Allow customers to quickly select:
+
+- Pet.
+- Service.
+- Preferred date.
+- Preferred time.
+- Location.
+- Special instructions.
+
+The backend must validate all submitted booking data.
+
+### Dashboard appearance
+
+Use:
+
+- Premium cards.
+- Soft shadows.
+- Smooth transitions.
+- Pet photography.
+- Elegant icons.
+- Animated progress indicators.
+- Clear information hierarchy.
+
+Never show fake bookings, fake ratings or invented caregiver availability.
+
+---
+
+# 5\. CAREGIVER DASHBOARD
+
+Create a separate dashboard for caregivers.
+
+### Welcome section
+
+"Welcome to Your PawCare Caregiver Dashboard"
+
+### Main widgets
+
+- Profile Verification Status.
+- Assigned Bookings.
+- Upcoming Services.
+- Completed Services.
+- Availability Calendar.
+- Customer Instructions.
+- Service History.
+- Notifications.
+- Profile Settings.
+
+### Caregiver booking cards
+
+Show:
+
+- Customer's relevant booking information.
+- Pet name and pet type.
+- Service type.
+- Date and time.
+- Service location.
+- Care instructions.
+- Booking status.
+
+Only show information required to complete the assigned service.
+
+### Availability management
+
+Allow caregivers to:
+
+- Set available dates.
+- Set available time slots.
+- Update availability.
+- Mark unavailable dates.
+
+All availability changes must be stored in Firebase and checked during booking assignment.
+
+### Verification
+
+Clearly display:
+
+- Application Submitted.
+- Under Review.
+- Approved.
+- Rejected.
+- Suspended.
+
+Only an authorized admin can approve caregivers.
+
+---
+
+# 6\. ADMIN CONTROL CENTER — PROFESSIONAL COMMAND DASHBOARD
+
+This is one of the most important parts of the application.
+
+Create a premium, powerful Admin Control Center inspired by professional SaaS dashboards.
+
+The design should look like a serious business management platform.
+
+Create both desktop and mobile admin experiences.
+
+### Admin dashboard header
+
+Display:
+
+**PAWCARE ADMIN CONTROL CENTER**
+
+Subtitle:
+
+Manage Pet Care Operations, Customers, Caregivers and Bookings.
+
+Include:
+
+- Admin profile.
+- Notifications.
+- Search.
+- Date range selector.
+- Quick actions.
+- Secure logout.
+
+### A. Executive overview
+
+Create beautiful KPI cards:
+
+1. Total Customers.
+2. Total Caregivers.
+3. Pending Caregiver Applications.
+4. Approved Caregivers.
+5. Total Bookings.
+6. Pending Bookings.
+7. Confirmed Bookings.
+8. Completed Bookings.
+
+Use:
+
+- Large metric typography.
+- Elegant icons.
+- Trend indicators only when historical data supports them.
+- Smooth count-up effects.
+- Loading skeletons.
+- Responsive card grids.
+
+Every metric must be derived from actual Firebase data.
+
+### B. Business analytics dashboard
+
+Create professional charts:
+
+- Booking trends.
+- Daily and monthly service demand.
+- Service category distribution.
+- Caregiver activity.
+- Booking completion rates.
+- Customer registration trends.
+- Cancellation analysis.
+
+Use interactive charts with:
+
+- Date filters.
+- Hover tooltips.
+- Smooth transitions.
+- Empty states.
+- Loading states.
+
+Do not fabricate revenue, growth or business performance.
+
+### C. Live booking management
+
+Create a central booking table with:
+
+- Booking ID.
+- Customer.
+- Pet.
+- Service.
+- Preferred date.
+- Assigned caregiver.
+- Price.
+- Booking status.
+- Actions.
+
+Filters:
+
+- All Bookings.
+- Pending.
+- Confirmed.
+- In Progress.
+- Completed.
+- Cancelled.
+
+Admin actions:
+
+- View details.
+- Assign caregiver.
+- Accept booking.
+- Reject booking.
+- Update status.
+- Cancel booking.
+- Review booking history.
+
+All privileged actions must be authorized and validated on the server.
+
+### D. Customer management
+
+Create:
+
+- Customer list.
+- Customer profile view.
+- Pet information relevant to operations.
+- Booking history.
+- Account status.
+- Search and filtering.
+
+Allow authorized account suspension or reactivation.
+
+Never expose passwords or authentication secrets.
+
+### E. Caregiver management
+
+Create a powerful caregiver management module.
+
+Show:
+
+- Profile photo.
+- Name.
+- Contact details according to admin permissions.
+- Experience.
+- Services offered.
+- Availability.
+- Application status.
+- Assigned bookings.
+- Service history.
+
+Admin actions:
+
+- Review application.
+- Approve caregiver.
+- Reject caregiver.
+- Suspend caregiver.
+- Reactivate caregiver.
+- Review submitted documents, if any.
+
+Never label an unverified person as verified.
+
+### F. Service and pricing management
+
+Admin can:
+
+- Add pet-care services.
+- Edit service descriptions.
+- Enable or disable services.
+- Configure service duration.
+- Configure customer pricing.
+- Review commission settings.
+
+The ₹500 selling price and ₹300 variable cost in the venture plan are estimates, not confirmed final prices.
+
+Do not automatically publish these values.
+
+All pricing changes must be recorded and validated server-side.
+
+### G. Support inbox
+
+Build a professional support inbox.
+
+Admin can:
+
+- View customer conversations.
+- Read incoming messages.
+- Reply to customers.
+- Track open and resolved conversations.
+- Search conversation history.
+- View message timestamps.
+
+Customers must see actual replies.
+
+Only authorized participants can access a conversation.
+
+### H. Admin audit log
+
+Track:
+
+- Caregiver approvals.
+- Booking status changes.
+- Price changes.
+- Account suspensions.
+- Important administrative actions.
+
+Store actor, action, target record and timestamp.
+
+### I. Admin website settings
+
+Allow authorized admins to manage:
+
+- Homepage content.
+- Service images.
+- Service descriptions.
+- Announcements.
+- FAQ.
+- Support settings.
+- Theme preferences.
+
+Do not expose sensitive system configuration in public settings.
+
+---
+
+# 7\. THREE PREMIUM PLAYABLE PAWCARE GAMES
+
+Create a dedicated section:
+
+# PAWCARE PLAY ZONE
+
+This must contain three genuinely playable, polished mini-games.
+
+The games must have attractive graphics, proper controls, sound settings, score tracking, instructions, pause/restart functionality and responsive layouts.
+
+Do not create static game cards that merely look interactive.
+
+Do not use fake score buttons.
+
+## GAME 1 — PAW RUNNER: THE HAPPY PET ADVENTURE
+
+\<Theme: Premium colourful 2D endless runner\>
+
+Create an engaging runner game.
+
+### Game concept
+
+A cute animated puppy runs through a beautiful park and collects paw coins and treats.
+
+### Graphics
+
+- Attractive puppy character.
+- Beautiful green park environment.
+- Animated trees.
+- Clouds.
+- Flowers.
+- Grass.
+- Moving background layers.
+- Collectible paw coins.
+- Treat items.
+- Safe obstacles.
+
+### Gameplay
+
+- Player controls the puppy.
+- Tap or press Space to jump.
+- Swipe up on mobile to jump.
+- Avoid obstacles.
+- Collect paw coins.
+- Increase score over time.
+- Difficulty increases gradually.
+- Game ends when the player hits an obstacle.
+
+### UI
+
+- Start Game.
+- Pause.
+- Resume.
+- Restart.
+- Sound On/Off.
+- Current Score.
+- Best Score.
+- Game Over screen.
+
+Add beautiful coin collection animations and level transitions.
+
+Make gameplay responsive and genuinely playable on Android mobile devices.
+
+## GAME 2 — PAW MEMORY MATCH
+
+\<Theme: Beautiful animated memory card game\>
+
+Create a premium pet-themed matching game.
+
+### Graphics
+
+Use illustrated cards featuring:
+
+- Dogs.
+- Cats.
+- Puppies.
+- Kittens.
+- Paw prints.
+- Pet toys.
+- Food bowls.
+- Bones.
+
+### Gameplay
+
+- Show a grid of face-down cards.
+- Player flips two cards.
+- If images match, keep them open.
+- If not, flip them back after a short delay.
+- Complete all pairs to win.
+- Count moves.
+- Track time.
+- Calculate score based on performance.
+
+### Difficulty
+
+- Easy: 3 pairs.
+- Medium: 6 pairs.
+- Hard: 8 pairs.
+
+### Animations
+
+- 3D-style card flip.
+- Smooth matching glow.
+- Celebration animation.
+- Progress indicator.
+- Victory screen.
+
+Add restart and difficulty selection.
+
+## GAME 3 — FEED THE PUPPY: TREAT CATCHER
+
+\<Theme: Colourful arcade catching game\>
+
+Create a fun arcade-style game.
+
+### Graphics
+
+- Cute animated puppy at the bottom.
+- Beautiful garden or pet park.
+- Falling treats.
+- Pet toys.
+- Paw collectibles.
+- Decorative scenery.
+- Attractive animated effects.
+
+### Gameplay
+
+- Player moves a basket or puppy left and right.
+- Catch safe treats.
+- Avoid unsuitable objects.
+- Each successful catch increases the score.
+- Missing too many treats reduces lives.
+- Game ends when lives are exhausted.
+
+### Controls
+
+- Mobile: touch and drag.
+- Desktop: arrow keys or A/D.
+
+### Game UI
+
+- Start.
+- Pause.
+- Resume.
+- Restart.
+- Score.
+- Lives.
+- Best Score.
+- Sound toggle.
+
+Use simple, clear gameplay and a progressive difficulty system.
+
+Do not portray unsafe foods as safe for animals. Use clearly fictional game collectibles and avoid real-world feeding advice.
+
+---
+
+# 8\. PAWCARE REWARDS \& ACHIEVEMENTS
+
+Create a dedicated rewards experience.
+
+### Rewards dashboard
+
+Show:
+
+- Earned game points.
+- Achievements.
+- Game history.
+- Daily challenges.
+- Reward progress.
+
+### Achievement examples
+
+- First Paw Runner Win.
+- Memory Master.
+- Treat Catcher Champion.
+- Five Games Played.
+- Weekly Play Streak.
+
+### Reward integrity
+
+Game scores and rewards must be validated through trusted server-side logic wherever rewards have real business value.
+
+Do not allow users to edit points in browser storage or client-side requests.
+
+For the first MVP, points can be non-monetary entertainment points.
+
+Do not promise cash rewards, discounts or redeemable benefits unless an admin has configured and approved a genuine reward program.
+
+---
+
+# 9\. FLOATING PAWCARE AI ASSISTANT
+
+Create a beautiful floating button:
+
+**ASK PAWCARE AI**
+
+Use:
+
+- Paw icon.
+- Gentle sparkle.
+- Premium emerald styling.
+- Smooth panel opening.
+- Responsive chat layout.
+
+AI can:
+
+- Explain services.
+- Guide booking.
+- Explain booking statuses.
+- Help users create pet profiles.
+- Explain caregiver registration.
+- Answer general PawCare questions.
+
+AI must not:
+
+- Diagnose animal illnesses.
+- Prescribe medicines.
+- Replace a veterinarian.
+- Invent caregiver availability.
+- Invent prices.
+- Confirm bookings without backend confirmation.
+- Reveal private customer or caregiver information.
+
+If an AI service is not configured, clearly show its unavailable/setup state. Do not fake AI responses.
+
+---
+
+# 10\. MESSAGE ADMIN — REAL CUSTOMER SUPPORT
+
+Create a second independent floating button:
+
+**MESSAGE PAWCARE ADMIN**
+
+Use a different icon and visual style from AI.
+
+Features:
+
+- Open support conversation.
+- Send customer messages.
+- Store messages in Firestore.
+- Display admin replies.
+- Show timestamps.
+- Show unread status.
+- Maintain conversation history.
+
+Admin replies must be genuine.
+
+Do not use a fake WhatsApp action or a decorative-only chat panel.
+
+---
+
+# 11\. ADVANCED GRAPHICS \& MOTION SYSTEM
+
+Build a reusable PawCare motion system.
+
+### Homepage
+
+- Cinematic hero reveal.
+- Pet image transitions.
+- Animated paw prints.
+- Gentle background movement.
+- Smooth text reveal.
+
+### Dashboard
+
+- KPI card entrance.
+- Smooth count-up.
+- Chart animation.
+- Booking card transitions.
+- Notification animation.
+
+### Games
+
+- Character animation.
+- Game environment motion.
+- Coin and treat collection.
+- Card flip.
+- Score feedback.
+- Victory celebration.
+
+### Buttons
+
+- Hover effects.
+- Press feedback.
+- Loading state.
+- Success state.
+- Disabled state.
+
+### Visual rules
+
+- Do not overuse animation.
+- Keep the UI fast.
+- Respect reduced-motion preferences.
+- Do not let animations block actions.
+- Optimize for mid-range Android devices.
+
+Use a centralized motion configuration and clean reusable components.
+
+---
+
+# 12\. AUTHENTICATION \& ROLE-BASED ACCESS
+
+Firebase Authentication is mandatory.
+
+Support:
+
+- Google Login.
+- Email/password registration.
+- Email/password login.
+- Password reset.
+- Secure logout.
+- Authentication persistence.
+
+Roles:
+
+- customer
+- caregiver
+- admin
+
+### Login routing
+
+Customer → Customer Dashboard.
+
+Caregiver → Caregiver Dashboard.
+
+Admin → Admin Control Center.
+
+Google login must work for all three roles, but Google authentication alone must never grant admin privileges.
+
+Admin permissions must be provisioned through a trusted server-side process using Firebase custom claims or an equally secure authorization mechanism.
+
+Do not rely on frontend-only role checks.
+
+---
+
+# 13\. FIREBASE DATABASE \& SECURITY
+
+Use:
+
+- Firebase Authentication.
+- Cloud Firestore.
+- Firebase Storage.
+- Firebase Security Rules.
+- Cloud Functions or trusted backend operations.
+
+Suggested collections:
+
+- users
+- pets
+- caregivers
+- caregiverApplications
+- services
+- bookings
+- conversations
+- messages
+- notifications
+- rewards
+- gameSessions
+- pricing
+- auditLogs
+- websiteContent
+
+### Security requirements
+
+- Customers can access only their own private data.
+- Caregivers can access only their own profiles and authorized assigned bookings.
+- Admins must have verified administrative roles.
+- Customers cannot change their own roles.
+- Game points cannot be arbitrarily increased by client requests.
+- Booking prices and statuses must be validated server-side.
+- Sensitive files must not be publicly accessible.
+- All privileged operations must be authorized.
+
+Never use permissive test-mode security rules in production.
+
+---
+
+# 14\. GITHUB SOURCE CONTROL
+
+Prepare the full project for GitHub.
+
+Requirements:
+
+- Clean source code.
+- Organized components.
+- Reusable hooks.
+- Firebase configuration through environment variables.
+- README.md.
+- .gitignore.
+- .env.example.
+- No credentials or private keys committed.
+
+Connect to the user's existing PawCare repository if available.
+
+Preserve existing code and working functionality.
+
+Commit and push the completed project only after checking the repository and branch.
+
+If GitHub authorization is unavailable, explain the exact manual steps instead of claiming success.
+
+---
+
+# 15\. VERCEL DEPLOYMENT
+
+Prepare the project for Vercel production deployment.
+
+Configure:
+
+- Framework.
+- Build command.
+- Output directory.
+- Environment variables.
+- SPA routing fallback where necessary.
+- Firebase authorized domains.
+
+Test:
+
+- Production homepage.
+- Google login.
+- Email/password login.
+- Customer dashboard.
+- Caregiver dashboard.
+- Admin dashboard.
+- Booking submission.
+- Game functionality.
+- Support messaging.
+- Mobile layout.
+
+Only report deployment success after Vercel confirms it.
+
+---
+
+# 16\. MOBILE-FIRST EXPERIENCE
+
+The mobile experience is extremely important.
+
+Use the provided screenshot as the quality benchmark for:
+
+- Header layout.
+- Hero section.
+- Floating controls.
+- Card hierarchy.
+- Bottom navigation.
+- Premium button design.
+
+Ensure:
+
+- No horizontal overflow.
+- Proper mobile typography.
+- Touch-friendly controls.
+- Smooth scrolling.
+- Responsive dashboards.
+- Playable mobile games.
+- Floating buttons do not cover important content.
+- Admin tables become mobile-friendly cards or controlled responsive tables.
+
+Test on common Android screen sizes.
+
+---
+
+# 17\. TESTING AND ACCEPTANCE CRITERIA
+
+Before declaring completion, verify:
+
+### Customer
+
+- Google login.
+- Email/password login.
+- Customer profile.
+- Add/edit pet.
+- Create booking.
+- View booking status.
+- Play all three games.
+- View rewards.
+- Send support message.
+
+### Caregiver
+
+- Register.
+- Submit application.
+- See approval status.
+- Manage availability.
+- View assigned bookings.
+
+### Admin
+
+- Secure login.
+- View dashboard metrics.
+- Manage customers.
+- Approve caregivers.
+- Manage bookings.
+- Manage services.
+- Manage pricing.
+- Reply to messages.
+- Review audit logs.
+
+### Games
+
+- All three games start.
+- Controls work on desktop and mobile.
+- Pause and restart work.
+- Score calculation works.
+- Game-over and victory states work.
+- No false rewards are issued.
+
+### Security
+
+- Customer cannot access another customer's data.
+- Caregiver cannot access unrelated bookings.
+- Customer cannot become admin.
+- Unauthorized users cannot access Admin Control Center data.
+- Client cannot manipulate booking prices or reward balances.
+
+---
+
+# 18\. FINAL DELIVERY
+
+Deliver the complete PawCare platform with:
+
+1. Premium PawCare homepage.
+2. Customer dashboard.
+3. Caregiver dashboard.
+4. Professional Admin Control Center.
+5. Firebase authentication.
+6. Mandatory Google login.
+7. Email/password authentication.
+8. Firestore integration.
+9. Secure role-based authorization.
+10. Real booking management.
+11. Caregiver verification workflow.
+12. Real support inbox.
+13. Separate AI Assistant.
+14. Three fully playable games.
+15. Rewards and achievements.
+16. Premium pet graphics.
+17. Cinematic animations.
+18. Responsive mobile navigation.
+19. GitHub-ready source.
+20. Vercel-ready deployment.
+
+### Final status report
+
+Clearly state:
+
+- Features implemented.
+- Features tested.
+- Firebase connection status.
+- Google login status.
+- Admin provisioning status.
+- GitHub push status.
+- Vercel deployment status.
+- Remaining configuration requirements.
+- Known issues.
+
+Never claim a feature is complete if it has not been tested.
+
+---
+
+# FINAL COMMAND
+
+Transform PawCare into a premium, trustworthy, modern pet-care ecosystem.
+
+The visual quality should match the polish and richness of the supplied Devashish Sunlit Home Stay screenshot, but the identity, content, graphics, dashboard and interactions must be original to PawCare.
+
+Build a beautiful customer experience, a useful caregiver workspace, a powerful admin command center and three genuinely playable pet-themed games.
+
+Use Firebase for the backend, Google login for authentication, GitHub for source control and Vercel for deployment.
+
+Preserve the existing PawCare project, implement in logical stages, test everything, and deliver a real working application rather than a decorative prototype.
+
+

@@ -1,4 +1,5 @@
 import { ArrowRight, Clock, IndianRupee } from 'lucide-react';
+import { motion } from 'motion/react';
 import { useNavigate } from 'react-router-dom';
 import { ImageWithFallback } from '../components/ImageWithFallback';
 import { usePublicData } from '../contexts/DataContext';
@@ -22,9 +23,12 @@ export function ServicesPage() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-7">
-        {services.map((service) => (
-          <div
+        {services.map((service, idx) => (
+          <motion.div
             key={service.serviceId}
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.28, delay: idx * 0.04, ease: [0.16, 1, 0.3, 1] }}
             className="group bg-white border border-stone-200 rounded-2xl overflow-hidden flex flex-col justify-between transition-all hover:border-teal-300 hover:shadow-sm"
           >
             <div>
@@ -32,8 +36,9 @@ export function ServicesPage() {
                 <ImageWithFallback
                   src={resolveServiceImage(service)}
                   alt={`${service.title} pet care service in Dehradun`}
-                  className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-[1.03]"
+                  className="w-full h-full object-cover"
                   fallbackLabel={service.title}
+                  hoverZoom
                 />
               </div>
               <div className="p-6 space-y-3">
@@ -61,14 +66,14 @@ export function ServicesPage() {
             <div className="px-6 pb-6">
               <button
                 type="button"
-                onClick={() => navigate(`/dashboard/book?service=${service.serviceId}`)}
+                onClick={() => navigate(`/customer/dashboard/book?service=${service.serviceId}`)}
                 className="w-full inline-flex items-center justify-center gap-2 py-2.5 px-4 text-sm font-semibold text-white bg-teal-700 hover:bg-teal-800 rounded-xl transition-colors cursor-pointer"
               >
                 Book {service.title}
                 <ArrowRight className="w-4 h-4" />
               </button>
             </div>
-          </div>
+          </motion.div>
         ))}
       </div>
 

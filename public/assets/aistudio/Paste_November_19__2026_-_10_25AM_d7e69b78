@@ -1,0 +1,936 @@
+# PAWCARE — COMPLETE MASTER BUILD & DEPLOYMENT PROMPT
+## Premium Pet Care Platform | Firebase | Google Authentication | Admin & Customer Portals | GitHub | Vercel
+
+Act as a senior full-stack software architect, product designer, UI/UX specialist, Firebase engineer, security engineer, and deployment specialist.
+
+Your task is to BUILD and COMPLETE a professional, production-minded pet-care booking platform named **PAWCARE**, based on the supplied PawCare Venture Plan.
+
+This is an existing venture concept that must become a working web application. Do not create a generic landing page, static prototype, or fake dashboard. Build a functional, responsive application with real authentication, database operations, role-based access, booking workflows, caregiver management, and deployment-ready code.
+
+---
+
+# 1. BUSINESS IDENTITY & VENTURE FOUNDATION
+
+**Brand:** PAWCARE  
+**Tagline:** Trusted Care for Your Beloved Pets.  
+**Initial Market:** Dehradun, Uttarakhand, India.
+
+### Mission
+PawCare helps busy pet owners find dependable people to care for their pets when they are working, studying, travelling, or away from home.
+
+### Target Customers
+- College students who own pets.
+- Working professionals.
+- Pet owners who travel frequently.
+- Families needing temporary pet-care assistance.
+- Pet owners who need regular or occasional support.
+
+### Core Customer Problem
+Pet owners struggle to find reliable people who can feed, walk, sit with, or look after their pets when they are unavailable.
+
+### Core Value Proposition
+PawCare connects pet owners with suitable, carefully screened caregivers through a simple, affordable and convenient booking experience.
+
+### Initial Services
+1. Pet Sitting.
+2. Pet Feeding.
+3. Dog Walking.
+4. Basic Pet Care.
+
+Do not advertise veterinary treatment, medical diagnosis, emergency medical services, or professional animal training unless separately approved and genuinely available.
+
+### Venture Positioning
+PawCare should feel affordable, trustworthy, convenient, transparent and locally accessible.
+
+---
+
+# 2. DESIGN DIRECTION — PREMIUM PAWCARE VISUAL IDENTITY
+
+Create a distinctive, premium, warm and modern visual identity.
+
+The design should feel like a professionally funded pet-care startup, not a basic student project.
+
+### Visual Style
+- Premium pet-care brand identity.
+- Warm cream and soft ivory backgrounds.
+- Deep forest green as a primary brand colour.
+- Fresh mint and soft sage accents.
+- Warm orange or golden highlights.
+- Dark charcoal typography.
+- Rounded cards with carefully controlled shadows.
+- Beautiful pet photography.
+- Modern icons and consistent spacing.
+- Elegant typography and clear visual hierarchy.
+
+Use a consistent design system across every page, dashboard, modal, form, notification and mobile screen.
+
+### Graphics & Photography
+Use high-quality, authentic-looking photographs of:
+- Dogs and cats.
+- Pet owners spending time with pets.
+- Caregivers walking dogs.
+- Caregivers feeding pets.
+- Indoor pet sitting.
+- Happy pets in safe environments.
+
+Use licensed, authorized or otherwise permitted image assets. Do not present AI-generated images as real PawCare customers, real caregivers, or verified service evidence.
+
+If actual company photos are unavailable, use clearly illustrative stock or generated visuals.
+
+Add:
+- Smooth image reveals.
+- Image hover zoom.
+- Elegant card transitions.
+- Soft gradients.
+- Subtle decorative paw patterns.
+- Tasteful pet-themed illustrations.
+- Consistent image aspect ratios.
+- Image loading placeholders.
+- Proper fallback images when an asset fails.
+
+Do not overload the website with excessive decorations.
+
+---
+
+# 3. CINEMATIC HOMEPAGE
+
+Create a visually impressive homepage with:
+
+### Navigation Bar
+- PawCare logo.
+- Home.
+- Our Services.
+- How It Works.
+- Find Care.
+- Become a Caregiver.
+- About Us.
+- Contact.
+- Login / Get Started.
+
+Show the correct account navigation after authentication.
+
+### Hero Section
+Headline:
+
+**Your Pet Deserves Love, Even When You're Away.**
+
+Supporting text:
+
+Find trusted pet-care support for feeding, walking, sitting and everyday care. PawCare makes it easier to find help when life gets busy.
+
+Primary CTA: Find Pet Care  
+Secondary CTA: Become a Caregiver
+
+Use a premium pet photography layout with smooth entrance animation and responsive positioning.
+
+### Homepage Sections
+1. Hero banner.
+2. Our pet-care services.
+3. Why choose PawCare.
+4. How PawCare works.
+5. Caregiver trust and verification explanation.
+6. Customer benefits.
+7. Dehradun-focused service introduction.
+8. Customer feedback section.
+9. Become a caregiver CTA.
+10. FAQ.
+11. Contact section.
+12. Professional footer.
+
+Do not invent real customer testimonials, caregiver ratings, completed bookings, or business achievements. Show honest empty states or clearly labelled sample/demo content until genuine data exists.
+
+---
+
+# 4. COMPLETE CUSTOMER PORTAL
+
+Build a dedicated customer experience.
+
+### Customer Registration
+Allow customers to:
+- Sign up using Google.
+- Sign up using email and password.
+- Sign in using Google.
+- Sign in using email and password.
+- Reset forgotten password.
+- Sign out securely.
+
+Google Authentication is mandatory.
+
+After first login, collect:
+- Full name.
+- Email.
+- Phone number (optional unless needed for booking).
+- City.
+- Profile photo.
+- Account creation date.
+
+Do not ask for unnecessary personal information.
+
+### Customer Dashboard
+Show:
+- Welcome message.
+- Profile overview.
+- Upcoming bookings.
+- Previous bookings.
+- Booking status.
+- Available pet-care services.
+- Saved pet profiles.
+- Notifications.
+- Support messages.
+- Account settings.
+
+### My Pets
+Customers should be able to create and manage pet profiles.
+
+Fields:
+- Pet name.
+- Animal type.
+- Breed (optional).
+- Age.
+- Size.
+- Profile photograph.
+- Behaviour notes.
+- Feeding instructions.
+- Special care instructions.
+- Relevant medication information, only when necessary for the requested service.
+
+Customers must be able to add, edit and remove their own pet profiles.
+
+Protect pet-related information with strict access control.
+
+---
+
+# 5. PET CARE SERVICE BOOKING SYSTEM
+
+This is the core functionality of PawCare.
+
+Create a complete booking flow.
+
+### Booking Steps
+
+Step 1: Select a service.
+- Pet Sitting.
+- Pet Feeding.
+- Dog Walking.
+- Basic Pet Care.
+
+Step 2: Select a pet.
+
+Step 3: Select a preferred date.
+
+Step 4: Select a preferred time or service duration.
+
+Step 5: Enter location and relevant instructions.
+
+Step 6: Review the booking request and displayed price.
+
+Step 7: Submit the booking request.
+
+Step 8: Display the actual booking status returned by the backend.
+
+### Booking Statuses
+- Pending.
+- Accepted.
+- Rejected.
+- Confirmed.
+- In Progress.
+- Completed.
+- Cancelled.
+
+Only authorized backend operations can change important booking states.
+
+### Booking Details
+Store:
+- Unique booking ID.
+- Customer ID.
+- Pet ID.
+- Service type.
+- Requested date.
+- Requested time.
+- Service location.
+- Customer instructions.
+- Assigned caregiver, if available.
+- Price snapshot.
+- Booking status.
+- Created timestamp.
+- Updated timestamp.
+
+### Important Booking Rules
+- Prevent invalid or conflicting assignments.
+- Check caregiver availability before assignment.
+- Do not confirm unavailable caregivers.
+- Prevent duplicate or conflicting bookings through server-side transactional validation.
+- Customers must not be allowed to edit their own payment or booking status.
+- Display cancellation rules clearly.
+- Show genuine booking information only.
+
+Build a real booking request and management system, not a simulated success screen.
+
+---
+
+# 6. CAREGIVER PORTAL
+
+Build a separate caregiver registration and dashboard experience.
+
+### Caregiver Registration
+Collect:
+- Full name.
+- Email.
+- Phone number.
+- City.
+- Profile image.
+- Pet-care experience.
+- Types of pets handled.
+- Services offered.
+- Availability.
+- Short introduction.
+
+Allow caregivers to submit their profiles for admin review.
+
+### Verification Workflow
+Caregiver statuses:
+- Application Submitted.
+- Under Review.
+- Approved.
+- Rejected.
+- Suspended.
+
+Only administrators can approve or reject caregiver applications.
+
+Never label a caregiver as verified before the actual verification process is completed.
+
+### Caregiver Dashboard
+Show:
+- Profile status.
+- Assigned bookings.
+- Upcoming services.
+- Service history.
+- Availability management.
+- Customer instructions relevant to assigned bookings.
+- Notifications.
+- Support options.
+
+Caregivers must not see unrelated customer information or other caregivers' private information.
+
+---
+
+# 7. ADMIN PORTAL — COMPLETE CONTROL CENTER
+
+Create a separate, professional Admin Dashboard.
+
+Admin access must be protected by server-controlled roles, not by hiding buttons or checking an email address in frontend code.
+
+### Admin Overview
+Display real database-driven metrics:
+- Total registered customers.
+- Total caregivers.
+- Pending caregiver applications.
+- Approved caregivers.
+- Total booking requests.
+- Pending bookings.
+- Confirmed bookings.
+- Completed bookings.
+- Cancelled bookings.
+- Booking trends.
+- Service demand.
+- Customer activity.
+
+If data is unavailable, show zero, an empty state or an explicit loading state. Never generate fake business statistics.
+
+### Admin Modules
+
+**A. Customer Management**
+- View customers.
+- View customer profiles.
+- Review customer booking history.
+- Suspend or reactivate accounts when authorized.
+- Do not expose passwords or authentication secrets.
+
+**B. Caregiver Management**
+- Review applications.
+- Approve caregivers.
+- Reject applications with a reason.
+- Suspend caregivers.
+- Review service history.
+- Manage caregiver availability where appropriate.
+
+**C. Booking Management**
+- View all booking requests.
+- Filter by service, date, customer, caregiver and status.
+- Assign suitable caregivers.
+- Confirm or reject requests.
+- Update service progress.
+- Mark services completed.
+- Manage cancellations.
+- Maintain an audit trail of important changes.
+
+**D. Service Management**
+- Add services.
+- Edit descriptions.
+- Enable or disable services.
+- Configure pricing.
+- Configure service duration.
+- Manage service availability.
+
+**E. Pricing Management**
+The venture plan provides an estimated ₹500 selling price and ₹300 variable cost per transaction. These are planning assumptions, not confirmed final customer tariffs.
+
+Therefore:
+- Do not automatically publish these figures as live prices.
+- Allow authorized administrators to configure actual customer prices.
+- Keep internal cost and commission information private.
+- Validate all prices on the server.
+- Maintain a record of price changes.
+
+**F. Support Inbox**
+- View customer support requests.
+- Reply to customers.
+- Track open and resolved conversations.
+- View timestamps and message history.
+- Restrict conversations to authorized participants.
+
+**G. Reports**
+- Booking reports.
+- Service demand.
+- Caregiver performance.
+- Customer activity.
+- Revenue and commission reporting only when actual financial records exist.
+- Export permitted reports.
+
+**H. Website Management**
+Allow authorized admins to manage:
+- Homepage text.
+- Service descriptions.
+- Images.
+- FAQ.
+- Contact details.
+- Announcements.
+- Website status messages.
+
+---
+
+# 8. GOOGLE AUTHENTICATION + FIREBASE BACKEND
+
+Firebase is mandatory for the application backend.
+
+Use:
+- Firebase Authentication.
+- Cloud Firestore.
+- Firebase Storage.
+- Firebase Security Rules.
+- Cloud Functions or a trusted server-side backend for privileged operations.
+
+### Authentication Requirements
+Implement:
+1. Google sign-in.
+2. Email/password registration.
+3. Email/password login.
+4. Password reset.
+5. Logout.
+6. Authentication state persistence.
+7. Protected routes.
+8. Role-based routing.
+
+Google login must work for both customers and caregivers. Admins must also be able to use Google login after their account has been provisioned and authorized.
+
+### Role System
+Use secure roles:
+- customer
+- caregiver
+- admin
+
+Never let a user assign their own admin role.
+
+Never trust a role stored only in localStorage or editable frontend state.
+
+Use Firebase custom claims or a trusted server-side role system. Verify authorization on every privileged operation.
+
+### Firestore Collections
+Create a documented, scalable data structure such as:
+
+- users
+- pets
+- caregivers
+- caregiverApplications
+- services
+- bookings
+- conversations
+- messages
+- notifications
+- pricing
+- websiteContent
+- auditLogs
+
+Use appropriate document IDs, references, timestamps, validation and indexes.
+
+### Firebase Storage
+Use secure storage for:
+- User profile images.
+- Pet images.
+- Caregiver profile images.
+- Approved verification documents, if required.
+
+Restrict file types, sizes and access permissions. Sensitive verification documents must never be publicly accessible.
+
+### Security Rules
+Implement and test rules that ensure:
+- Customers can access only their own private profiles, pets and bookings.
+- Caregivers can access only their own profile and authorized assigned booking information.
+- Admins can perform administrative actions only after trusted role verification.
+- Users cannot grant themselves elevated permissions.
+- Unauthenticated visitors cannot access private records.
+- Messages are visible only to authorized conversation participants.
+- Storage uploads and downloads follow ownership and authorization rules.
+
+Do not deploy permissive test-mode Firestore or Storage rules.
+
+### Environment Configuration
+Use environment variables for public Firebase web configuration.
+
+Expected Vite variables:
+
+VITE_FIREBASE_API_KEY  
+VITE_FIREBASE_AUTH_DOMAIN  
+VITE_FIREBASE_PROJECT_ID  
+VITE_FIREBASE_STORAGE_BUCKET  
+VITE_FIREBASE_MESSAGING_SENDER_ID  
+VITE_FIREBASE_APP_ID
+
+Do not hardcode credentials into source files.
+
+Never place Firebase Admin SDK private keys, service account JSON, private API secrets, or privileged credentials in frontend code.
+
+Do not expose secrets in GitHub.
+
+---
+
+# 9. AI ASSISTANT — PAWCARE SMART HELP
+
+Add a premium floating AI Assistant button.
+
+Label: **Ask PawCare AI**
+
+Use an elegant paw or sparkle icon.
+
+### AI Assistant Capabilities
+The assistant can:
+- Explain available PawCare services.
+- Guide users through booking.
+- Explain booking statuses.
+- Help customers understand the pet profile form.
+- Answer general questions about how PawCare works.
+- Guide caregivers through registration.
+- Direct users to customer support when human help is needed.
+
+### AI Safety
+- Do not diagnose animal illnesses.
+- Do not prescribe medicines.
+- Do not replace veterinary professionals.
+- For emergencies or signs of serious illness, advise the customer to contact a qualified veterinarian or emergency veterinary service.
+- Do not claim that a booking is confirmed unless the backend confirms it.
+- Do not invent caregiver availability, prices or service locations.
+- Do not expose private customer or caregiver records.
+- Do not allow AI to approve caregivers or modify bookings without authorized backend workflows.
+
+If an AI API is not configured, show a clear setup state or disable AI gracefully. Never simulate a live AI response.
+
+---
+
+# 10. FLOATING MESSAGE ADMIN BUTTON
+
+Create a second floating button:
+
+**Message PawCare Support**
+
+This must be separate from the AI Assistant.
+
+### Customer Support Features
+- Open a support panel.
+- Allow authenticated customers to submit messages.
+- Save conversations and messages in Firestore.
+- Show actual admin replies.
+- Display timestamps.
+- Show conversation status.
+- Allow customers to view their own conversation history.
+
+### Admin Support Features
+- Dedicated support inbox.
+- View incoming messages.
+- Reply to customers.
+- Mark conversations as open, pending or resolved.
+- Maintain message history.
+
+Do not use a fake WhatsApp link or a non-functional contact button as a substitute for the support system.
+
+### Floating Button Layout
+Place both buttons in a clean fixed position, preferably at the bottom-right.
+
+Use two separate stacked actions:
+1. Ask PawCare AI.
+2. Message PawCare Support.
+
+Ensure:
+- No overlap with navigation or footer.
+- Mobile-safe spacing.
+- Visible labels or accessible tooltips.
+- Proper keyboard accessibility.
+- Smooth opening and closing animations.
+
+---
+
+# 11. PREMIUM MOTION & ANIMATION SYSTEM
+
+Build a reusable animation system for the complete website.
+
+### Page Transitions
+- Smooth page entrance.
+- Soft fade and slide.
+- Subtle section reveals.
+- Elegant modal transitions.
+- Smooth tab transitions.
+
+### Button Effects
+- Smooth hover elevation.
+- Gentle scale feedback.
+- Soft glow where appropriate.
+- Clear loading states.
+- Click feedback.
+- Disabled states.
+
+### Image Effects
+- Slow image reveal.
+- Hover zoom.
+- Gentle parallax only where performance allows.
+- Smooth card image transitions.
+- Loading shimmer.
+
+### Dashboard Effects
+- Smooth metric count-up only when genuine values load.
+- Animated chart entry.
+- Table row transitions.
+- Notification animations.
+- Skeleton loading.
+
+### PawCare Brand Effects
+Use subtle paw-print decorative motion, gentle floating shapes, and premium transitions.
+
+Avoid excessive bouncing, flashing, spinning, or distracting animations.
+
+### Motion Accessibility
+Respect prefers-reduced-motion. Keep all important functionality usable without animation.
+
+---
+
+# 12. RESPONSIVE DESIGN & MOBILE EXPERIENCE
+
+The application must work properly on:
+- Android phones.
+- iPhones.
+- Tablets.
+- Laptops.
+- Desktop screens.
+
+Requirements:
+- Responsive navigation.
+- Mobile-friendly forms.
+- Touch-friendly buttons.
+- Proper card stacking.
+- Responsive dashboards.
+- Mobile-friendly booking flow.
+- Correct image cropping.
+- No horizontal overflow.
+- Accessible text sizes.
+- Floating controls must not cover important content.
+
+Test common mobile viewport sizes.
+
+---
+
+# 13. NOTIFICATIONS
+
+Create real notifications for:
+- Booking request submitted.
+- Booking accepted.
+- Booking rejected.
+- Booking cancelled.
+- Caregiver application received.
+- Caregiver application approved or rejected.
+- New support reply.
+- Important account updates.
+
+Store notifications in Firestore.
+
+Show unread counts and read/unread states.
+
+Only display notifications generated by actual system events.
+
+Do not claim email, SMS or push notifications are working unless the relevant provider and credentials have been configured and tested.
+
+---
+
+# 14. MVP SCOPE — FOLLOW THE VENTURE PLAN
+
+The first release must focus on the actual PawCare MVP.
+
+### Must-Have
+- Pet-care booking.
+- Verified caregiver profiles and approval workflow.
+- Customer registration and login.
+- Google Authentication.
+- Caregiver registration.
+- Booking confirmation and customer-caregiver communication.
+- Admin management.
+- Secure database.
+- Responsive website.
+
+### Should-Have
+- Booking notifications.
+- Customer and caregiver dashboards.
+- Support messaging.
+- Basic reports.
+- Caregiver availability management.
+
+### Do Not Add to Version 1 Without Approval
+- GPS tracking.
+- AI-based pet recommendations.
+- Veterinary consultation.
+- Pet product delivery.
+- Complex loyalty programs.
+- Multi-city expansion.
+- Unverified payment features.
+
+Prepare the architecture so that future expansion is possible without making these features appear active now.
+
+---
+
+# 15. PRICING & BUSINESS MODEL
+
+The venture plan describes a commission-based revenue model.
+
+Planning assumptions:
+- Estimated selling price: ₹500.
+- Estimated variable cost: ₹300.
+- Estimated contribution per sale: ₹200.
+- Base planning scenario: 25 customers and 2 purchases per customer.
+- Conservative and ambitious scenarios are also described in the venture plan.
+
+These are business-planning estimates, not proven actual performance.
+
+Build configurable pricing and commission logic.
+
+Requirements:
+- Admin-controlled service pricing.
+- Server-side price calculation.
+- Booking price snapshot.
+- Separate customer-facing price and internal commission/cost data.
+- Accurate financial records.
+- No fake revenue.
+- No fabricated transaction history.
+
+Do not enable online payment processing until a real payment provider has been configured and its server-side verification is implemented.
+
+---
+
+# 16. GITHUB INTEGRATION — COMPLETE SOURCE CONTROL
+
+Prepare the complete application for GitHub.
+
+Requirements:
+- Clean project structure.
+- Organized components.
+- Reusable hooks and services.
+- Documented Firebase configuration.
+- README.md.
+- .gitignore.
+- .env.example with variable names only.
+- No real credentials in committed files.
+- No service account JSON in the repository.
+- No build output or unnecessary generated files.
+- No exposed secrets.
+
+### GitHub Workflow
+1. Preserve the existing project and working features.
+2. Initialize Git if not already initialized.
+3. Check the current repository and branch.
+4. Commit the completed application.
+5. Connect to the user's intended GitHub repository.
+6. Push the code to the intended branch.
+7. Verify the latest commit and uploaded files.
+
+Do not create an unrelated duplicate repository without approval.
+
+If direct GitHub authorization is unavailable, provide the exact connection and push steps instead of claiming the push succeeded.
+
+---
+
+# 17. VERCEL DEPLOYMENT — PRODUCTION READY
+
+Prepare PawCare for deployment on Vercel.
+
+Requirements:
+- Correct build command.
+- Correct output directory.
+- Environment variables configured through Vercel.
+- SPA routing fallback if required.
+- Production build validation.
+- Firebase authorized domain configuration.
+- Secure production configuration.
+
+### Deployment Workflow
+1. Connect the intended GitHub repository to Vercel.
+2. Configure the framework and build settings.
+3. Add all required Firebase environment variables in Vercel.
+4. Deploy the production branch.
+5. Check build logs.
+6. Verify the deployment URL.
+7. Test Google login on the deployed domain.
+8. Test email/password login.
+9. Test customer registration.
+10. Test caregiver registration.
+11. Test booking submission.
+12. Test admin access and role protection.
+13. Test support messaging.
+14. Test mobile responsiveness.
+
+Do not say that the website is deployed until Vercel confirms a successful deployment.
+
+---
+
+# 18. ADMIN ACCOUNT PROVISIONING
+
+Build a secure first-admin setup process.
+
+Requirements:
+- Admin roles must be granted only through a trusted server-side process.
+- Google login alone must never grant admin access.
+- Provide a documented initial admin provisioning procedure.
+- Support multiple separately authorized admin accounts.
+- Keep an audit record of administrative actions.
+- Do not put admin passwords or private credentials into frontend source code.
+
+If admin details are not supplied, create the provisioning workflow without inventing an admin identity.
+
+---
+
+# 19. QUALITY ASSURANCE & TESTING
+
+Before declaring completion, test:
+
+### Authentication
+- Google login.
+- Google logout.
+- Email/password signup.
+- Email/password login.
+- Password reset.
+- Protected routes.
+- Role-based access.
+
+### Customer
+- Profile creation.
+- Pet creation and editing.
+- Booking request.
+- Booking history.
+- Support messages.
+- Notifications.
+
+### Caregiver
+- Application submission.
+- Admin approval.
+- Profile access.
+- Availability.
+- Assigned bookings.
+
+### Admin
+- Secure admin login.
+- Customer management.
+- Caregiver approvals.
+- Booking management.
+- Service and pricing configuration.
+- Support inbox.
+- Reports.
+
+### Security
+- Customer cannot access another customer's private data.
+- Caregiver cannot access unrelated bookings.
+- Customer cannot grant admin role.
+- Unauthenticated user cannot access protected data.
+- Client cannot manipulate booking prices or privileged statuses.
+- Private storage documents cannot be accessed publicly.
+
+### Design
+- Desktop layout.
+- Mobile layout.
+- Tablet layout.
+- Images.
+- Animations.
+- Navigation.
+- Buttons.
+- Forms.
+- Empty states.
+- Loading states.
+- Error states.
+
+Fix all critical errors before final delivery.
+
+---
+
+# 20. FINAL DELIVERY REQUIREMENTS
+
+Do not stop after generating the homepage.
+
+Deliver a complete application with:
+
+1. Premium PawCare visual identity.
+2. Fully functional homepage.
+3. Customer portal.
+4. Caregiver portal.
+5. Admin dashboard.
+6. Google Authentication.
+7. Email/password Authentication.
+8. Firebase Firestore integration.
+9. Firebase Storage integration where needed.
+10. Secure role-based authorization.
+11. Real booking workflows.
+12. Caregiver application and approval.
+13. AI Assistant interface and configured functionality, if credentials are available.
+14. Message Admin support system.
+15. Premium graphics and animations.
+16. Responsive mobile experience.
+17. GitHub-ready source code.
+18. Vercel-ready production configuration.
+19. README and setup documentation.
+20. Testing and deployment report.
+
+### Final Report Must Clearly State
+- What was implemented.
+- What was tested successfully.
+- What Firebase configuration is still required.
+- Whether Google login works.
+- Whether Firestore and Storage are connected.
+- Whether GitHub push succeeded.
+- Whether Vercel deployment succeeded.
+- Which features remain pending.
+- Any security or configuration issues.
+
+Never mark an untested feature as completed.
+
+---
+
+# MOST IMPORTANT IMPLEMENTATION INSTRUCTIONS
+
+- First inspect the existing project and its current code.
+- Preserve all working functionality.
+- Do not delete or replace the existing application unnecessarily.
+- Do not create a fresh project if the current project can be upgraded.
+- Follow the supplied PawCare Venture Plan as the business source of truth.
+- Build in logical stages and test each stage.
+- Use Firebase as the backend.
+- Make Google login mandatory and functional.
+- Separate customer, caregiver and admin permissions.
+- Use real database operations instead of fake demo data.
+- Never expose secrets.
+- Never invent successful bookings, caregivers, reviews, payments or business metrics.
+- Keep the interface premium, polished, animated and professional.
+- Prioritize security, usability, performance and maintainability.
+
+**FINAL GOAL: Build PAWCARE into a complete, premium, secure and deployable pet-care platform for Dehradun, with real Firebase authentication, Google login, customer and caregiver experiences, a protected admin control center, a working pet-care booking system, premium graphics and animations, and a verified GitHub-to-Vercel deployment workflow.**

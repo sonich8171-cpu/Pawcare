@@ -2,50 +2,74 @@ import {
   Activity,
   Calendar,
   CheckCircle2,
+  ClipboardList,
   Clock,
+  Copy,
+  Download,
+  FileText,
+  HelpCircle,
   IndianRupee,
   LayoutDashboard,
+  LogOut,
   MessageCircle,
   Phone,
-  Settings,
+  Search,
+  Sliders,
   ShieldAlert,
   ShieldCheck,
   Star,
   UserCheck,
   X,
+  XCircle,
 } from 'lucide-react';
-import { useEffect, useState, type FormEvent } from 'react';
-import { Link } from 'react-router-dom';
+import { AnimatePresence, motion } from 'motion/react';
+import { useEffect, useMemo, useState, type FormEvent } from 'react';
+import {
+  Bar,
+  BarChart,
+  CartesianGrid,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from 'recharts';
+import { BookingReceiptModal } from '../components/BookingReceiptModal';
 import { ImageWithFallback } from '../components/ImageWithFallback';
+import { SupportHelpPanel } from '../components/SupportHelpPanel';
 import { useAuth } from '../contexts/AuthContext';
 import { usePublicData } from '../contexts/DataContext';
 import { AVAILABILITY_SLOTS, CAREGIVER_SKILLS, resolveServiceImage } from '../data/defaults';
-import { uploadMediaFile } from '../lib/firebase';
+import { formatAppError } from '../lib/authErrors';
 import {
   submitOrUpdateCaregiverApplication,
   subscribeCaregiverBookings,
   updateBookingStatus,
+  updateCaregiverQuickAvailability,
 } from '../services/firestoreService';
 import type { BookingRecord, IdDocType } from '../types/pawcare';
 
 type CaregiverTab =
   | 'overview'
+  | 'profile'
+  | 'verification'
   | 'requests'
   | 'upcoming'
-  | 'active'
+  | 'accepted'
   | 'completed'
-  | 'cancelled'
+  | 'rejected'
   | 'earnings'
+  | 'instructions'
   | 'reviews'
-  | 'profile'
-  | 'settings';
+  | 'availability'
+  | 'help';
 
 export function CaregiverDashboard() {
-  const { firebaseUser, userProfile, caregiverProfile, resetPassword } = useAuth();
+  const { firebaseUser, userProfile, caregiverProfile, resetPassword, logout } = useAuth();
   const { services, platformSettings, reviews } = usePublicData();
 
   const [activeTab, setActiveTab] = useState<CaregiverTab>('overview');
   const [bookings, setBookings] = useState<BookingRecord[]>([]);
+  const [listenerError, setListenerError] = useState<string | null>(null);
   const [toast, setToast] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   // Registration / Profile form fields
@@ -66,11 +90,16 @@ export function CaregiverDashboard() {
   const [idDocType, setIdDocType] = useState<IdDocType>('Aadhaar');
   const [idDocNumber, setIdDocNumber] = useState('');
   const [photoUrl, setPhotoUrl] = useState('');
-  const [photoFile, setPhotoFile] = useState<File | null>(null);
-  const [photoPreviewUrl, setPhotoPreviewUrl] = useState('');
   const [idDocUrl, setIdDocUrl] = useState('');
-  const [idDocFile, setIdDocFile] = useState<File | null>(null);
   const [saving, setSaving] = useState(false);
+
+  // Partner ergonomics state
+  const [receiptBooking, setReceiptBooking] = useState<BookingRecord | null>(null);
+  const [bookingSearch, setBookingSearch] = useState('');
+  const [earningsStatusFilter, setEarningsStatusFilter] = useState<
+    'all' | 'completed' | 'active' | 'cancelled'
+  >('all');
+  const [togglingSlot, setTogglingSlot] = useState(false);
 
   useEffect(() => {
     if (caregiverProfile) {
@@ -100,18 +129,13 @@ export function CaregiverDashboard() {
 
   useEffect(() => {
     if (!firebaseUser) return;
-    return subscribeCaregiverBookings(firebaseUser.uid, setBookings);
+    setListenerError(null);
+    return subscribeCaregiverBookings(
+      firebaseUser.uid,
+      setBookings,
+      (err) => setListenerError(`Live booking sync issue: ${err.message}`)
+    );
   }, [firebaseUser]);
-
-  useEffect(() => {
-    if (!photoFile) {
-      setPhotoPreviewUrl('');
-      return;
-    }
-    const objUrl = URL.createObjectURL(photoFile);
-    setPhotoPreviewUrl(objUrl);
-    return () => URL.revokeObjectURL(objUrl);
-  }, [photoFile]);
 
   const showToast = (type: 'success' | 'error', text: string) => {
     setToast({ type, text });
@@ -125,6 +149,22 @@ export function CaregiverDashboard() {
   const handleSubmitProfile = async (e: FormEvent) => {
     e.preventDefault();
     if (!firebaseUser) return;
+    if (fullName.trim().length < 2) {
+      showToast('error', 'Full name must be at least 2 characters.');
+      return;
+    }
+    if (phone.trim().length < 8) {
+      showToast('error', 'Please enter a valid phone number (at least 8 digits).');
+      return;
+    }
+    if (address.trim().length < 5) {
+      showToast('error', 'Residential address must be at least 5 characters.');
+      return;
+    }
+    if (idDocNumber.trim().length < 4) {
+      showToast('error', 'Government ID document number must be at least 4 characters.');
+      return;
+    }
     if (servicesOffered.length === 0 || availability.length === 0) {
       showToast('error', 'Please select at least one service offered and one availability slot.');
       return;
@@ -132,38 +172,16 @@ export function CaregiverDashboard() {
 
     setSaving(true);
     try {
-      let finalPhoto = photoUrl.trim();
-      let finalIdDoc = idDocUrl.trim();
-
-      if (photoFile) {
-        try {
-          finalPhoto = await uploadMediaFile(
-            `caregivers/${firebaseUser.uid}/public/avatar_${Date.now()}`,
-            photoFile
-          );
-        } catch {
-          showToast('error', 'Profile photo upload skipped (Firebase Storage not active).');
-        }
-      }
-
-      if (idDocFile) {
-        try {
-          finalIdDoc = await uploadMediaFile(
-            `caregivers/${firebaseUser.uid}/verification/id_${Date.now()}`,
-            idDocFile
-          );
-        } catch {
-          showToast('error', 'ID file upload skipped (Firebase Storage not active).');
-        }
-      }
+      const finalPhoto = photoUrl.trim();
+      const finalIdDoc = idDocUrl.trim();
 
       await submitOrUpdateCaregiverApplication(
         firebaseUser.uid,
         {
-          fullName,
+          fullName: fullName.trim(),
           email: email || firebaseUser.email || '',
-          phone,
-          address,
+          phone: phone.trim(),
+          address: address.trim(),
           locality,
           bio,
           experienceYears: Number(experienceYears) || 0,
@@ -172,7 +190,7 @@ export function CaregiverDashboard() {
           availability,
           expectedCharge: Math.max(100, Number(expectedCharge) || 300),
           idDocType,
-          idDocNumber,
+          idDocNumber: idDocNumber.trim(),
           photoUrl: finalPhoto,
           idDocUrl: finalIdDoc,
         },
@@ -185,18 +203,25 @@ export function CaregiverDashboard() {
           : 'Application submitted! An administrator will verify your documents before listing you publicly.'
       );
     } catch (err) {
-      showToast('error', err instanceof Error ? err.message : 'Could not save caregiver profile.');
+      showToast('error', formatAppError(err, 'Could not save caregiver profile.'));
     } finally {
       setSaving(false);
     }
   };
 
+  const isVerifiedCaregiver =
+    caregiverProfile?.verificationStatus === 'verified' &&
+    caregiverProfile?.accountStatus === 'active';
+
   const pendingRequests = bookings.filter((b) => b.status === 'pending');
-  const upcomingBookings = bookings.filter((b) => ['accepted', 'confirmed'].includes(b.status));
-  const activeServices = bookings.filter((b) => b.status === 'in_progress');
+  const upcomingBookings = bookings.filter((b) => ['confirmed', 'in_progress'].includes(b.status));
+  const acceptedBookings = bookings.filter((b) =>
+    ['accepted', 'confirmed', 'in_progress'].includes(b.status)
+  );
   const completedBookings = bookings.filter((b) => b.status === 'completed');
-  const cancelledBookings = bookings.filter((b) =>
-    ['cancelled', 'rejected'].includes(b.status)
+  const rejectedBookings = bookings.filter((b) => ['rejected', 'cancelled'].includes(b.status));
+  const instructionsBookings = bookings.filter((b) =>
+    ['pending', 'accepted', 'confirmed', 'in_progress'].includes(b.status)
   );
   const myReviews = reviews.filter((r) => r.caregiverId === firebaseUser?.uid);
   const totalPayoutEarned = completedBookings.reduce((sum, b) => sum + b.caregiverPayout, 0);
@@ -209,11 +234,117 @@ export function CaregiverDashboard() {
     .reduce((sum, b) => sum + b.caregiverPayout, 0);
   const whatsappClean = platformSettings.whatsappNumber.replace(/[^0-9]/g, '');
 
+  const earningsChartData = useMemo(() => {
+    const map = new Map<string, { month: string; Earned: number; Scheduled: number }>();
+    bookings.forEach((b) => {
+      const month = (b.bookingDate || '').slice(0, 7) || 'Unknown';
+      const entry = map.get(month) || { month, Earned: 0, Scheduled: 0 };
+      if (b.status === 'completed') {
+        entry.Earned += b.caregiverPayout;
+      } else if (['accepted', 'confirmed', 'in_progress'].includes(b.status)) {
+        entry.Scheduled += b.caregiverPayout;
+      }
+      map.set(month, entry);
+    });
+    return Array.from(map.values()).sort((a, b) => a.month.localeCompare(b.month));
+  }, [bookings]);
+
+  const filteredEarningsBookings = useMemo(() => {
+    return bookings.filter((b) => {
+      if (earningsStatusFilter === 'completed') return b.status === 'completed';
+      if (earningsStatusFilter === 'active') {
+        return ['pending', 'accepted', 'confirmed', 'in_progress'].includes(b.status);
+      }
+      if (earningsStatusFilter === 'cancelled') {
+        return ['cancelled', 'rejected'].includes(b.status);
+      }
+      return true;
+    });
+  }, [bookings, earningsStatusFilter]);
+
+  const handleQuickToggleSlot = async (slot: string) => {
+    if (!firebaseUser || !caregiverProfile || togglingSlot) return;
+    const exists = availability.includes(slot);
+    if (exists && availability.length <= 1) {
+      showToast('error', 'Keep at least one active availability slot enabled.');
+      return;
+    }
+    const nextSlots = exists ? availability.filter((s) => s !== slot) : [...availability, slot];
+    setTogglingSlot(true);
+    try {
+      setAvailability(nextSlots);
+      await updateCaregiverQuickAvailability(firebaseUser.uid, nextSlots, isVerifiedCaregiver);
+      showToast('success', `${exists ? 'Paused' : 'Enabled'} slot: ${slot}`);
+    } catch (err) {
+      setAvailability(caregiverProfile.availability);
+      showToast('error', formatAppError(err, 'Could not update availability slot.'));
+    } finally {
+      setTogglingSlot(false);
+    }
+  };
+
+  const handleCopyAddress = async (b: BookingRecord) => {
+    const full = `${b.serviceAddress}, ${b.locality}`;
+    try {
+      await navigator.clipboard.writeText(full);
+      showToast('success', `Address copied: ${full}`);
+    } catch {
+      showToast('error', 'Clipboard access unavailable on this browser.');
+    }
+  };
+
+  const handleExportEarningsCsv = () => {
+    const headers = ['Date', 'BookingID', 'Service', 'Pet', 'Status', 'GrossINR', 'PlatformFeeINR', 'NetPayoutINR'];
+    const rows = filteredEarningsBookings.map((b) => [
+      b.bookingDate,
+      b.bookingId,
+      b.serviceTitle,
+      b.petName,
+      b.status,
+      b.grossAmount,
+      b.platformCommission,
+      b.caregiverPayout,
+    ]);
+    const csv = [headers, ...rows]
+      .map((r) => r.map((v) => `"${String(v ?? '').replace(/"/g, '""')}"`).join(','))
+      .join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `pawcare_caregiver_earnings_${new Date().toISOString().split('T')[0]}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleCaregiverBookingTransition = async (
+    b: BookingRecord,
+    nextStatus: 'accepted' | 'rejected' | 'confirmed' | 'in_progress' | 'completed'
+  ) => {
+    if (!isVerifiedCaregiver && nextStatus !== 'rejected') {
+      showToast(
+        'error',
+        'Action blocked: Administrator verification is required before accepting or starting bookings.'
+      );
+      return;
+    }
+    try {
+      await updateBookingStatus({
+        booking: b,
+        nextStatus,
+        actorRole: 'caregiver',
+      });
+      showToast('success', `Booking ${b.bookingId} updated to ${nextStatus.replace('_', ' ')}.`);
+    } catch (err) {
+      showToast('error', formatAppError(err, 'Could not update booking status.'));
+    }
+  };
+
   // If caregiver hasn't registered yet, render the complete onboarding application
   if (!caregiverProfile) {
     return (
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-6">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
             <p className="text-sm font-semibold text-violet-700">Caregiver Onboarding · Dehradun</p>
             <h1 className="font-display text-3xl font-extrabold text-stone-900">
@@ -224,12 +355,13 @@ export function CaregiverDashboard() {
               your identity documents.
             </p>
           </div>
-          <Link
-            to="/dashboard"
-            className="text-xs font-semibold text-stone-600 hover:text-stone-900 underline shrink-0"
+          <button
+            type="button"
+            onClick={logout}
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-stone-700 bg-white border border-stone-200 hover:bg-stone-50 rounded-xl shrink-0 cursor-pointer"
           >
-            Back to Customer Dashboard
-          </Link>
+            <LogOut className="w-3.5 h-3.5" /> Sign Out
+          </button>
         </div>
 
         {toast && (
@@ -254,6 +386,7 @@ export function CaregiverDashboard() {
               <input
                 type="text"
                 required
+                minLength={2}
                 value={fullName}
                 onChange={(e) => setFullName(e.target.value)}
                 className="w-full px-3.5 py-2.5 text-sm border border-stone-200 rounded-xl"
@@ -267,6 +400,7 @@ export function CaregiverDashboard() {
                 type="tel"
                 required
                 minLength={8}
+                maxLength={20}
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
                 placeholder="+91 98XXXXXXXX"
@@ -456,12 +590,12 @@ export function CaregiverDashboard() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs font-semibold text-stone-700 mb-1">
-                  Profile Photograph
+                  Profile Portrait URL (Optional HTTPS link)
                 </label>
                 <div className="flex items-center gap-3">
                   <div className="w-12 h-12 rounded-full overflow-hidden shrink-0 ring-1 ring-stone-200">
                     <ImageWithFallback
-                      src={photoPreviewUrl || photoUrl || undefined}
+                      src={photoUrl.trim() || undefined}
                       alt={fullName || 'Caregiver portrait'}
                       fallbackLabel={fullName || 'Caregiver'}
                       variant="avatar"
@@ -470,22 +604,24 @@ export function CaregiverDashboard() {
                     />
                   </div>
                   <input
-                    type="file"
-                    accept="image/*"
-                    onChange={(e) => setPhotoFile(e.target.files?.[0] || null)}
-                    className="text-xs text-stone-600 file:mr-2 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:bg-stone-100 file:font-semibold"
+                    type="url"
+                    value={photoUrl}
+                    onChange={(e) => setPhotoUrl(e.target.value)}
+                    placeholder="https://... (optional; monogram badge used if blank)"
+                    className="w-full px-3 py-2 text-xs bg-white border border-stone-200 rounded-xl"
                   />
                 </div>
               </div>
               <div>
                 <label className="block text-xs font-semibold text-stone-700 mb-1">
-                  Upload ID Document (Private to Admin)
+                  ID Document Reference Link (Optional, Admin-Only)
                 </label>
                 <input
-                  type="file"
-                  accept="image/*,.pdf"
-                  onChange={(e) => setIdDocFile(e.target.files?.[0] || null)}
-                  className="text-xs text-stone-600 file:mr-2 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:bg-stone-100 file:font-semibold"
+                  type="url"
+                  value={idDocUrl}
+                  onChange={(e) => setIdDocUrl(e.target.value)}
+                  placeholder="Optional Google Drive / secure link for admin review"
+                  className="w-full px-3 py-2.5 text-xs bg-white border border-stone-200 rounded-xl"
                 />
               </div>
             </div>
@@ -494,7 +630,7 @@ export function CaregiverDashboard() {
           <button
             type="submit"
             disabled={saving}
-            className="w-full py-3 px-6 text-sm font-semibold text-white bg-violet-700 hover:bg-violet-800 rounded-xl transition-colors cursor-pointer disabled:opacity-60"
+            className="w-full py-3 px-6 text-sm font-semibold text-white bg-emerald-900 hover:bg-emerald-800 rounded-xl transition-colors cursor-pointer disabled:opacity-60"
           >
             {saving ? 'Submitting Application...' : 'Submit Caregiver Application for Verification'}
           </button>
@@ -505,6 +641,22 @@ export function CaregiverDashboard() {
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
+      {listenerError && (
+        <div
+          role="alert"
+          className="px-4 py-3 rounded-xl border border-red-200 bg-red-50 text-red-900 text-sm font-medium flex items-center justify-between gap-3"
+        >
+          <span>{listenerError}</span>
+          <button
+            type="button"
+            onClick={() => setListenerError(null)}
+            className="p-1 rounded hover:bg-red-100 cursor-pointer"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
+
       {toast && (
         <div
           className={`px-4 py-3 rounded-xl border text-sm font-medium flex items-center justify-between ${
@@ -520,47 +672,109 @@ export function CaregiverDashboard() {
         </div>
       )}
 
-      {/* Verification Status Banner */}
+      {/* Strict Verification Status Banner */}
       <div
         className={`rounded-2xl p-4 sm:p-5 border flex flex-col sm:flex-row sm:items-center justify-between gap-4 ${
-          caregiverProfile.verificationStatus === 'verified'
+          isVerifiedCaregiver
             ? 'bg-teal-50 border-teal-200 text-teal-950'
-            : caregiverProfile.verificationStatus === 'rejected'
+            : caregiverProfile.verificationStatus === 'rejected' ||
+              caregiverProfile.accountStatus === 'suspended'
             ? 'bg-red-50 border-red-200 text-red-950'
             : 'bg-amber-50 border-amber-200 text-amber-950'
         }`}
       >
         <div className="flex items-start gap-3">
-          {caregiverProfile.verificationStatus === 'verified' ? (
+          {isVerifiedCaregiver ? (
             <ShieldCheck className="w-5 h-5 text-teal-700 shrink-0 mt-0.5" />
           ) : (
             <ShieldAlert className="w-5 h-5 text-amber-700 shrink-0 mt-0.5" />
           )}
           <div>
             <p className="text-sm font-bold">
-              Verification Status:{' '}
-              <span className="capitalize">{caregiverProfile.verificationStatus}</span>
-              {caregiverProfile.accountStatus === 'suspended' && ' (Account Suspended)'}
+              {caregiverProfile.accountStatus === 'suspended'
+                ? 'Account Suspended by Administration'
+                : caregiverProfile.verificationStatus === 'verified'
+                ? 'Verification Status: Approved & Verified'
+                : caregiverProfile.verificationStatus === 'rejected'
+                ? 'Verification Status: Application Rejected'
+                : 'Pending Admin Verification'}
             </p>
             <p className="text-xs opacity-90 mt-0.5">
-              {caregiverProfile.verificationStatus === 'verified'
-                ? 'Your profile is publicly visible and bookable by Dehradun pet owners.'
+              {isVerifiedCaregiver
+                ? 'Your profile is publicly listed and you can accept and manage pet care bookings.'
                 : caregiverProfile.verificationStatus === 'rejected'
-                ? `Admin note: ${caregiverProfile.adminNotes || 'Please update your documents and details.'}`
-                : 'Your application is awaiting administrator review. You will appear in the public directory once approved.'}
+                ? `Admin note: ${caregiverProfile.adminNotes || 'Please update your documents and details before resubmitting.'}`
+                : 'Your identity documents are under administrator review. Booking acceptance is locked until an admin approves your account.'}
             </p>
           </div>
         </div>
-        <Link
-          to="/dashboard"
-          className="text-xs font-semibold px-3.5 py-2 rounded-lg bg-white border border-stone-200 text-stone-800 whitespace-nowrap shrink-0"
+        <button
+          type="button"
+          onClick={() => setActiveTab('verification')}
+          className="text-xs font-semibold px-3.5 py-2 rounded-lg bg-white border border-stone-200 text-stone-800 whitespace-nowrap shrink-0 cursor-pointer hover:bg-stone-50"
         >
-          Customer Dashboard
-        </Link>
+          View Verification Details
+        </button>
+      </div>
+
+      {/* Mobile Compact Identity + Sign Out Bar */}
+      <div className="lg:hidden flex items-center justify-between gap-3 bg-white border border-stone-200 rounded-xl px-3.5 py-2.5">
+        <div className="min-w-0">
+          <p className="text-[11px] font-semibold text-violet-700">Caregiver Account</p>
+          <p className="text-sm font-bold text-stone-900 truncate">
+            {caregiverProfile.fullName}
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={logout}
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-red-700 bg-red-50 hover:bg-red-100 rounded-lg shrink-0 cursor-pointer"
+        >
+          <LogOut className="w-3.5 h-3.5" /> Sign Out
+        </button>
+      </div>
+
+      {/* Mobile Compact Nav */}
+      <div className="lg:hidden overflow-x-auto pb-1">
+        <div className="inline-flex items-center gap-1.5 p-1 bg-stone-100 rounded-xl min-w-max">
+          {(
+            [
+              { id: 'overview', label: 'Overview', icon: LayoutDashboard },
+              { id: 'profile', label: 'My Profile', icon: UserCheck },
+              { id: 'verification', label: 'Verification Status', icon: ShieldCheck },
+              { id: 'requests', label: 'Requests', icon: Clock, badge: pendingRequests.length },
+              { id: 'upcoming', label: 'Upcoming', icon: Calendar, badge: upcomingBookings.length },
+              { id: 'accepted', label: 'Accepted', icon: Activity, badge: acceptedBookings.length },
+              { id: 'completed', label: 'Completed', icon: CheckCircle2 },
+              { id: 'rejected', label: 'Rejected', icon: XCircle },
+              { id: 'earnings', label: 'Earnings', icon: IndianRupee },
+              { id: 'instructions', label: 'Instructions', icon: ClipboardList },
+              { id: 'reviews', label: 'Reviews', icon: Star },
+              { id: 'availability', label: 'Availability', icon: Sliders },
+              { id: 'help', label: 'Help & Support', icon: HelpCircle },
+            ] as const
+          ).map((item) => {
+            const Icon = item.icon;
+            const active = activeTab === item.id;
+            return (
+              <button
+                key={item.id}
+                type="button"
+                onClick={() => setActiveTab(item.id)}
+                className={`inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-lg whitespace-nowrap shrink-0 cursor-pointer ${
+                  active ? 'bg-white text-violet-800 shadow-sm' : 'text-stone-600'
+                }`}
+              >
+                <Icon className="w-3.5 h-3.5" />
+                <span>{item.label}</span>
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-        <aside className="lg:col-span-3">
+        <aside className="hidden lg:block lg:col-span-3">
           <div className="bg-white border border-stone-200 rounded-2xl p-4 space-y-4">
             <div className="flex items-center gap-3 pb-3 border-b border-stone-100">
               <div className="w-12 h-12 rounded-full overflow-hidden bg-stone-100 shrink-0 ring-1 ring-stone-200">
@@ -574,17 +788,20 @@ export function CaregiverDashboard() {
                 />
               </div>
               <div className="min-w-0">
-                <p className="text-xs text-stone-500">Caregiver Panel</p>
+                <p className="text-xs font-medium text-violet-700">Caregiver Account</p>
                 <p className="font-display font-bold text-stone-900 truncate">
                   {caregiverProfile.fullName}
                 </p>
+                <p className="text-[11px] text-stone-500 truncate">{caregiverProfile.email}</p>
               </div>
             </div>
 
-            <nav className="space-y-1">
+            <nav className="space-y-1" aria-label="Caregiver Dashboard Sections">
               {(
                 [
                   { id: 'overview', label: 'Overview', icon: LayoutDashboard },
+                  { id: 'profile', label: 'My Profile', icon: UserCheck },
+                  { id: 'verification', label: 'Verification Status', icon: ShieldCheck },
                   {
                     id: 'requests',
                     label: 'Booking Requests',
@@ -598,17 +815,23 @@ export function CaregiverDashboard() {
                     badge: upcomingBookings.length,
                   },
                   {
-                    id: 'active',
-                    label: 'Active Services',
+                    id: 'accepted',
+                    label: 'Accepted Bookings',
                     icon: Activity,
-                    badge: activeServices.length,
+                    badge: acceptedBookings.length,
                   },
                   { id: 'completed', label: 'Completed Bookings', icon: CheckCircle2 },
-                  { id: 'cancelled', label: 'Cancelled / Rejected', icon: X },
+                  { id: 'rejected', label: 'Rejected Bookings', icon: XCircle },
                   { id: 'earnings', label: 'Earnings', icon: IndianRupee },
+                  {
+                    id: 'instructions',
+                    label: 'Customer Instructions',
+                    icon: ClipboardList,
+                    badge: instructionsBookings.length,
+                  },
                   { id: 'reviews', label: 'Reviews', icon: Star },
-                  { id: 'profile', label: 'Profile & Availability', icon: UserCheck },
-                  { id: 'settings', label: 'Settings & Trust', icon: Settings },
+                  { id: 'availability', label: 'Availability Settings', icon: Sliders },
+                  { id: 'help', label: 'Help & Support', icon: HelpCircle },
                 ] as const
               ).map((item) => {
                 const Icon = item.icon;
@@ -618,50 +841,165 @@ export function CaregiverDashboard() {
                     key={item.id}
                     type="button"
                     onClick={() => setActiveTab(item.id)}
-                    className={`w-full flex items-center justify-between px-3 py-2 text-sm font-medium rounded-xl cursor-pointer ${
-                      active ? 'bg-violet-700 text-white' : 'text-stone-700 hover:bg-stone-100'
+                    className={`relative w-full flex items-center justify-between px-3 py-2 text-sm font-medium rounded-xl cursor-pointer transition-colors whitespace-nowrap ${
+                      active ? 'text-white' : 'text-stone-700 hover:bg-stone-100'
                     }`}
                   >
-                    <span className="flex items-center gap-2.5">
+                    {active && (
+                      <motion.span
+                        layoutId="caregiver-sidebar-active"
+                        transition={{ type: 'spring', stiffness: 380, damping: 32 }}
+                        className="absolute inset-0 bg-violet-700 rounded-xl -z-0"
+                      />
+                    )}
+                    <span className="relative z-10 flex items-center gap-2.5">
                       <Icon className="w-4 h-4 shrink-0" />
                       <span>{item.label}</span>
                     </span>
                     {'badge' in item && item.badge > 0 && (
-                      <span className="font-mono-tabular text-xs font-semibold">{item.badge}</span>
+                      <span className="relative z-10 font-mono-tabular text-xs font-semibold">
+                        {item.badge}
+                      </span>
                     )}
                   </button>
                 );
               })}
             </nav>
+
+            <div className="pt-3 border-t border-stone-100">
+              <button
+                type="button"
+                onClick={logout}
+                className="w-full flex items-center justify-center gap-1.5 py-2 text-xs font-medium text-stone-600 hover:text-stone-900 hover:bg-stone-100 rounded-xl cursor-pointer transition-colors"
+              >
+                <LogOut className="w-3.5 h-3.5" /> Sign Out
+              </button>
+            </div>
           </div>
         </aside>
 
         <main className="lg:col-span-9 space-y-6">
+          {/* Partner Duty & Quick Shift Bar */}
+          <div className="bg-white border border-stone-200 rounded-2xl p-4 space-y-3">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="space-y-0.5">
+                <p className="text-xs font-semibold text-violet-700">
+                  Partner Shift Control · {caregiverProfile.locality}
+                </p>
+                <p className="text-xs text-stone-600 font-mono-tabular">
+                  Base Payout Rate: ₹{caregiverProfile.expectedCharge} ·{' '}
+                  {availability.length} active slot(s) · {upcomingBookings.length} upcoming session(s)
+                </p>
+              </div>
+              <div className="flex flex-wrap items-center gap-2 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('requests')}
+                  className="px-3 py-1.5 text-xs font-semibold text-teal-800 bg-teal-50 hover:bg-teal-100 rounded-xl cursor-pointer font-mono-tabular"
+                >
+                  Requests ({pendingRequests.length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('earnings')}
+                  className="px-3 py-1.5 text-xs font-semibold text-stone-800 bg-stone-100 hover:bg-stone-200 rounded-xl cursor-pointer font-mono-tabular"
+                >
+                  Earned: ₹{totalPayoutEarned}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('help')}
+                  className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-semibold text-stone-700 bg-stone-100 hover:bg-stone-200 rounded-xl cursor-pointer"
+                >
+                  <HelpCircle className="w-3.5 h-3.5 text-violet-700" /> Help
+                </button>
+              </div>
+            </div>
+
+            <div className="pt-2.5 border-t border-stone-100 flex flex-wrap items-center gap-1.5">
+              <span className="text-[11px] font-semibold text-stone-500 mr-1">
+                1-Tap Slots:
+              </span>
+              {AVAILABILITY_SLOTS.map((slot) => {
+                const enabled = availability.includes(slot);
+                return (
+                  <button
+                    key={slot}
+                    type="button"
+                    disabled={togglingSlot}
+                    onClick={() => handleQuickToggleSlot(slot)}
+                    className={`px-2.5 py-1 text-[11px] font-semibold rounded-lg border cursor-pointer transition-colors ${
+                      enabled
+                        ? 'bg-violet-700 border-violet-700 text-white'
+                        : 'bg-stone-50 border-stone-200 text-stone-600 hover:bg-stone-100'
+                    }`}
+                  >
+                    {slot}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={activeTab}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -6 }}
+              transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
+            >
           {activeTab === 'overview' && (
             <div className="space-y-6">
+              {!isVerifiedCaregiver && (
+                <div className="bg-amber-50 border border-amber-200 rounded-2xl p-6 space-y-2">
+                  <h2 className="font-display text-lg font-bold text-amber-950">
+                    Pending Approval — Limited Access Mode
+                  </h2>
+                  <p className="text-sm text-amber-900">
+                    Until a PawCare administrator verifies your identity document (
+                    {caregiverProfile.idDocType}), pet parents cannot see your profile in public
+                    search and booking acceptance buttons remain disabled.
+                  </p>
+                </div>
+              )}
+
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                 {[
-                  { label: 'Pending Requests', value: pendingRequests.length },
-                  { label: 'Upcoming Sessions', value: upcomingBookings.length },
-                  { label: 'Completed', value: completedBookings.length },
-                  { label: 'Net Payout Earned', value: `₹${totalPayoutEarned}` },
+                  { label: 'Pending Requests', value: pendingRequests.length, tab: 'requests' as CaregiverTab },
+                  { label: 'Upcoming Sessions', value: upcomingBookings.length, tab: 'upcoming' as CaregiverTab },
+                  { label: 'Completed', value: completedBookings.length, tab: 'completed' as CaregiverTab },
+                  { label: 'Net Payout Earned', value: `₹${totalPayoutEarned}`, tab: 'earnings' as CaregiverTab },
                 ].map((stat) => (
-                  <div
+                  <button
                     key={stat.label}
-                    className="bg-white border border-stone-200 rounded-2xl p-5 space-y-1"
+                    type="button"
+                    onClick={() => setActiveTab(stat.tab)}
+                    className="text-left bg-white border border-stone-200 hover:border-violet-300 rounded-2xl p-5 space-y-1 transition-colors cursor-pointer"
                   >
                     <p className="text-xs text-stone-500">{stat.label}</p>
                     <p className="font-display text-2xl font-bold text-stone-900 font-mono-tabular">
                       {stat.value}
                     </p>
-                  </div>
+                  </button>
                 ))}
               </div>
 
               <div className="bg-white border border-stone-200 rounded-2xl p-6 space-y-3">
-                <h2 className="font-display text-lg font-bold text-stone-900">
-                  Incoming Booking Requests
-                </h2>
+                <div className="flex items-center justify-between gap-2">
+                  <h2 className="font-display text-lg font-bold text-stone-900">
+                    Incoming Booking Requests
+                  </h2>
+                  {pendingRequests.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => setActiveTab('requests')}
+                      className="text-xs font-semibold text-violet-700 hover:underline cursor-pointer"
+                    >
+                      View all ({pendingRequests.length})
+                    </button>
+                  )}
+                </div>
                 {pendingRequests.length === 0 ? (
                   <p className="text-sm text-stone-500">No pending requests right now.</p>
                 ) : (
@@ -684,34 +1022,38 @@ export function CaregiverDashboard() {
                               {b.serviceTitle} for {b.petName} ({b.petBreed})
                             </p>
                             <p className="text-xs text-stone-500 truncate">
-                              Customer: {b.customerName} · {b.bookingDate} ({b.timeSlot}) ·{' '}
-                              {b.locality}
+                              Customer: {b.customerName} · {b.bookingDate} (
+                              {b.startTime && b.endTime
+                                ? `${b.startTime}–${b.endTime}`
+                                : b.timeSlot}
+                              ) · {b.locality}
                             </p>
                           </div>
                         </div>
-                        <div className="flex items-center gap-2">
+                        <div className="flex flex-wrap items-center gap-2 shrink-0">
                           <button
                             type="button"
-                            onClick={() =>
-                              updateBookingStatus({
-                                booking: b,
-                                nextStatus: 'accepted',
-                                actorRole: 'caregiver',
-                              })
+                            onClick={() => setReceiptBooking(b)}
+                            className="inline-flex items-center gap-1 px-3 py-2 text-xs font-semibold text-stone-700 bg-stone-100 hover:bg-stone-200 rounded-lg cursor-pointer"
+                          >
+                            <FileText className="w-3.5 h-3.5" /> Details
+                          </button>
+                          <button
+                            type="button"
+                            disabled={!isVerifiedCaregiver}
+                            title={
+                              isVerifiedCaregiver
+                                ? 'Accept booking request'
+                                : 'Admin verification required before accepting bookings'
                             }
-                            className="px-3.5 py-2 text-xs font-semibold text-white bg-teal-700 hover:bg-teal-800 rounded-lg cursor-pointer"
+                            onClick={() => handleCaregiverBookingTransition(b, 'accepted')}
+                            className="px-3.5 py-2 text-xs font-semibold text-white bg-teal-700 hover:bg-teal-800 rounded-lg cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                           >
                             Accept (₹{b.caregiverPayout})
                           </button>
                           <button
                             type="button"
-                            onClick={() =>
-                              updateBookingStatus({
-                                booking: b,
-                                nextStatus: 'rejected',
-                                actorRole: 'caregiver',
-                              })
-                            }
+                            onClick={() => handleCaregiverBookingTransition(b, 'rejected')}
                             className="px-3.5 py-2 text-xs font-semibold text-red-700 bg-red-50 hover:bg-red-100 rounded-lg cursor-pointer"
                           >
                             Reject
@@ -722,209 +1064,286 @@ export function CaregiverDashboard() {
                   </div>
                 )}
               </div>
+
+              {/* Active / Upcoming Care Queue */}
+              {upcomingBookings.length > 0 && (
+                <div className="bg-white border border-stone-200 rounded-2xl p-6 space-y-3">
+                  <div className="flex items-center justify-between gap-2">
+                    <h2 className="font-display text-lg font-bold text-stone-900">
+                      Upcoming & Live Care Queue ({upcomingBookings.length})
+                    </h2>
+                    <button
+                      type="button"
+                      onClick={() => setActiveTab('upcoming')}
+                      className="text-xs font-semibold text-violet-700 hover:underline cursor-pointer"
+                    >
+                      Open queue
+                    </button>
+                  </div>
+                  <div className="space-y-3">
+                    {upcomingBookings.slice(0, 3).map((b) => (
+                      <div
+                        key={b.bookingId}
+                        className="border border-stone-200 rounded-xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3"
+                      >
+                        <div className="space-y-0.5 min-w-0">
+                          <p className="text-sm font-bold text-stone-900 truncate">
+                            {b.serviceTitle} · {b.petName}
+                          </p>
+                          <p className="text-xs text-stone-500">
+                            {b.bookingDate} ({b.startTime}–{b.endTime}) · {b.serviceAddress},{' '}
+                            {b.locality}
+                          </p>
+                        </div>
+                        <div className="flex flex-wrap items-center gap-2 shrink-0">
+                          <button
+                            type="button"
+                            onClick={() => handleCopyAddress(b)}
+                            className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-semibold text-stone-700 bg-stone-100 hover:bg-stone-200 rounded-lg cursor-pointer"
+                          >
+                            <Copy className="w-3 h-3" /> Copy Address
+                          </button>
+                          {b.status === 'confirmed' && (
+                            <button
+                              type="button"
+                              onClick={() => handleCaregiverBookingTransition(b, 'in_progress')}
+                              className="px-3.5 py-1.5 text-xs font-semibold text-white bg-violet-700 hover:bg-violet-800 rounded-lg cursor-pointer"
+                            >
+                              Start Session
+                            </button>
+                          )}
+                          {b.status === 'in_progress' && (
+                            <button
+                              type="button"
+                              onClick={() => handleCaregiverBookingTransition(b, 'completed')}
+                              className="px-3.5 py-1.5 text-xs font-semibold text-white bg-teal-700 hover:bg-teal-800 rounded-lg cursor-pointer"
+                            >
+                              Mark Completed
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
           {(activeTab === 'requests' ||
             activeTab === 'upcoming' ||
-            activeTab === 'active' ||
+            activeTab === 'accepted' ||
             activeTab === 'completed' ||
-            activeTab === 'cancelled') && (
+            activeTab === 'rejected') && (
             <div className="space-y-4">
-              <h1 className="font-display text-2xl font-bold text-stone-900 capitalize">
-                {activeTab === 'requests'
-                  ? 'Pending Booking Requests'
-                  : activeTab === 'upcoming'
-                  ? 'Upcoming Confirmed Bookings'
-                  : activeTab === 'active'
-                  ? 'Active Care Sessions (In Progress)'
-                  : activeTab === 'completed'
-                  ? 'Completed Bookings'
-                  : 'Cancelled & Rejected Bookings'}
-              </h1>
-
-              {(activeTab === 'requests'
-                ? pendingRequests
-                : activeTab === 'upcoming'
-                ? upcomingBookings
-                : activeTab === 'active'
-                ? activeServices
-                : activeTab === 'completed'
-                ? completedBookings
-                : cancelledBookings
-              ).length === 0 ? (
-                <div className="bg-white border border-stone-200 rounded-2xl p-8 text-center text-sm text-stone-500">
-                  No bookings in this category.
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <h1 className="font-display text-2xl font-bold text-stone-900 capitalize">
+                  {activeTab === 'requests'
+                    ? 'Pending Booking Requests'
+                    : activeTab === 'upcoming'
+                    ? 'Upcoming Confirmed & Live Bookings'
+                    : activeTab === 'accepted'
+                    ? 'Accepted Bookings'
+                    : activeTab === 'completed'
+                    ? 'Completed Bookings'
+                    : 'Rejected & Cancelled Bookings'}
+                </h1>
+                <div className="relative sm:w-64">
+                  <Search className="w-3.5 h-3.5 text-stone-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                  <input
+                    type="text"
+                    value={bookingSearch}
+                    onChange={(e) => setBookingSearch(e.target.value)}
+                    placeholder="Search pet, customer, area..."
+                    className="w-full pl-8 pr-3 py-2 text-xs bg-white border border-stone-200 rounded-xl"
+                  />
                 </div>
-              ) : (
-                <div className="space-y-4">
-                  {(activeTab === 'requests'
+              </div>
+
+              {(() => {
+                const baseList =
+                  activeTab === 'requests'
                     ? pendingRequests
                     : activeTab === 'upcoming'
                     ? upcomingBookings
-                    : activeTab === 'active'
-                    ? activeServices
+                    : activeTab === 'accepted'
+                    ? acceptedBookings
                     : activeTab === 'completed'
                     ? completedBookings
-                    : cancelledBookings
-                  ).map((b) => (
-                    <div
-                      key={b.bookingId}
-                      className="bg-white border border-stone-200 rounded-2xl p-5 space-y-3"
-                    >
-                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                        <div className="flex items-center gap-3 min-w-0">
-                          <div className="w-12 h-12 rounded-xl overflow-hidden shrink-0 ring-1 ring-stone-200">
-                            <ImageWithFallback
-                              src={resolveServiceImage(b.serviceTitle)}
-                              alt={b.serviceTitle}
-                              className="w-full h-full object-cover"
-                            />
+                    : rejectedBookings;
+                const q = bookingSearch.trim().toLowerCase();
+                const visibleList = !q
+                  ? baseList
+                  : baseList.filter(
+                      (b) =>
+                        b.petName.toLowerCase().includes(q) ||
+                        b.customerName.toLowerCase().includes(q) ||
+                        b.locality.toLowerCase().includes(q) ||
+                        b.serviceTitle.toLowerCase().includes(q) ||
+                        b.bookingId.toLowerCase().includes(q)
+                    );
+                return visibleList.length === 0 ? (
+                  <div className="bg-white border border-stone-200 rounded-2xl p-8 text-center text-sm text-stone-500">
+                    {baseList.length === 0
+                      ? 'No bookings in this category.'
+                      : 'No bookings matched your search.'}
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {visibleList.map((b) => (
+                      <div
+                        key={b.bookingId}
+                        className="bg-white border border-stone-200 rounded-2xl p-5 space-y-3"
+                      >
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                          <div className="flex items-center gap-3 min-w-0">
+                            <div className="w-12 h-12 rounded-xl overflow-hidden shrink-0 ring-1 ring-stone-200">
+                              <ImageWithFallback
+                                src={resolveServiceImage(b.serviceTitle)}
+                                alt={b.serviceTitle}
+                                className="w-full h-full object-cover"
+                              />
+                            </div>
+                            <div className="min-w-0">
+                              <h2 className="font-display text-lg font-bold text-stone-900 truncate">
+                                {b.serviceTitle} · {b.petName} ({b.petType})
+                              </h2>
+                              <p className="text-xs text-stone-500">
+                                Customer: {b.customerName}{' '}
+                                {b.customerPhone ? `(${b.customerPhone})` : ''} · {b.bookingDate} ·{' '}
+                                {b.timeSlot}
+                              </p>
+                            </div>
                           </div>
-                          <div className="min-w-0">
-                            <h2 className="font-display text-lg font-bold text-stone-900 truncate">
-                              {b.serviceTitle} · {b.petName} ({b.petType})
-                            </h2>
-                            <p className="text-xs text-stone-500">
-                              Customer: {b.customerName}{' '}
-                              {b.customerPhone ? `(${b.customerPhone})` : ''} · {b.bookingDate} ·{' '}
-                              {b.timeSlot}
+                          <div className="text-right">
+                            <span className="font-mono-tabular text-sm font-bold text-teal-800 block">
+                              Your Payout: ₹{b.caregiverPayout}
+                            </span>
+                            <span className="text-[11px] text-stone-500 capitalize">
+                              Status: {b.status.replace('_', ' ')}
+                            </span>
+                          </div>
+                        </div>
+
+                        <div className="bg-stone-50 rounded-xl p-3.5 text-xs text-stone-700 space-y-1">
+                          <p>
+                            <span className="font-semibold">Address:</span> {b.serviceAddress},{' '}
+                            {b.locality}
+                          </p>
+                          {b.petInstructions && (
+                            <p>
+                              <span className="font-semibold">Pet Care Notes:</span>{' '}
+                              {b.petInstructions}
                             </p>
-                          </div>
+                          )}
+                          {b.specialInstructions && (
+                            <p>
+                              <span className="font-semibold">Customer Instructions:</span>{' '}
+                              {b.specialInstructions}
+                            </p>
+                          )}
                         </div>
-                        <div className="text-right">
-                          <span className="font-mono-tabular text-sm font-bold text-teal-800 block">
-                            Your Payout: ₹{b.caregiverPayout}
-                          </span>
-                          <span className="text-[11px] text-stone-500 capitalize">
-                            Status: {b.status.replace('_', ' ')}
-                          </span>
-                        </div>
-                      </div>
 
-                      <div className="bg-stone-50 rounded-xl p-3.5 text-xs text-stone-700 space-y-1">
-                        <p>
-                          <span className="font-semibold">Address:</span> {b.serviceAddress},{' '}
-                          {b.locality}
-                        </p>
-                        {b.petInstructions && (
-                          <p>
-                            <span className="font-semibold">Pet Care Notes:</span>{' '}
-                            {b.petInstructions}
-                          </p>
-                        )}
-                        {b.specialInstructions && (
-                          <p>
-                            <span className="font-semibold">Customer Instructions:</span>{' '}
-                            {b.specialInstructions}
-                          </p>
-                        )}
-                      </div>
+                        <div className="flex flex-wrap gap-2 pt-1">
+                          {b.status === 'pending' && (
+                            <>
+                              <button
+                                type="button"
+                                disabled={!isVerifiedCaregiver}
+                                title={
+                                  isVerifiedCaregiver
+                                    ? 'Accept booking request'
+                                    : 'Admin verification required before accepting bookings'
+                                }
+                                onClick={() => handleCaregiverBookingTransition(b, 'accepted')}
+                                className="px-3.5 py-2 text-xs font-semibold text-white bg-teal-700 rounded-lg cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                              >
+                                Accept Request
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleCaregiverBookingTransition(b, 'rejected')}
+                                className="px-3.5 py-2 text-xs font-semibold text-red-700 bg-red-50 rounded-lg cursor-pointer"
+                              >
+                                Reject
+                              </button>
+                            </>
+                          )}
 
-                      <div className="flex flex-wrap gap-2 pt-1">
-                        {b.status === 'pending' && (
-                          <>
+                          {b.status === 'accepted' && (
                             <button
                               type="button"
-                              onClick={() =>
-                                updateBookingStatus({
-                                  booking: b,
-                                  nextStatus: 'accepted',
-                                  actorRole: 'caregiver',
-                                })
-                              }
-                              className="px-3.5 py-2 text-xs font-semibold text-white bg-teal-700 rounded-lg cursor-pointer"
+                              disabled={!isVerifiedCaregiver}
+                              onClick={() => handleCaregiverBookingTransition(b, 'confirmed')}
+                              className="px-3.5 py-2 text-xs font-semibold text-white bg-teal-700 rounded-lg cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                             >
-                              Accept Request
+                              Confirm Schedule
                             </button>
+                          )}
+
+                          {b.status === 'confirmed' && (
                             <button
                               type="button"
-                              onClick={() =>
-                                updateBookingStatus({
-                                  booking: b,
-                                  nextStatus: 'rejected',
-                                  actorRole: 'caregiver',
-                                })
-                              }
-                              className="px-3.5 py-2 text-xs font-semibold text-red-700 bg-red-50 rounded-lg cursor-pointer"
+                              disabled={!isVerifiedCaregiver}
+                              onClick={() => handleCaregiverBookingTransition(b, 'in_progress')}
+                              className="px-3.5 py-2 text-xs font-semibold text-white bg-violet-700 rounded-lg cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                             >
-                              Reject
+                              Start Care Session
                             </button>
-                          </>
-                        )}
+                          )}
 
-                        {b.status === 'accepted' && (
+                          {b.status === 'in_progress' && (
+                            <button
+                              type="button"
+                              disabled={!isVerifiedCaregiver}
+                              onClick={() => handleCaregiverBookingTransition(b, 'completed')}
+                              className="px-3.5 py-2 text-xs font-semibold text-white bg-teal-700 rounded-lg cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                              Mark Service Completed
+                            </button>
+                          )}
+
                           <button
                             type="button"
-                            onClick={() =>
-                              updateBookingStatus({
-                                booking: b,
-                                nextStatus: 'confirmed',
-                                actorRole: 'caregiver',
-                              })
-                            }
-                            className="px-3.5 py-2 text-xs font-semibold text-white bg-teal-700 rounded-lg cursor-pointer"
+                            onClick={() => handleCopyAddress(b)}
+                            className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-stone-700 bg-stone-100 hover:bg-stone-200 rounded-lg cursor-pointer"
                           >
-                            Confirm Schedule
+                            <Copy className="w-3.5 h-3.5" /> Copy Address
                           </button>
-                        )}
 
-                        {b.status === 'confirmed' && (
                           <button
                             type="button"
-                            onClick={() =>
-                              updateBookingStatus({
-                                booking: b,
-                                nextStatus: 'in_progress',
-                                actorRole: 'caregiver',
-                              })
-                            }
-                            className="px-3.5 py-2 text-xs font-semibold text-white bg-violet-700 rounded-lg cursor-pointer"
+                            onClick={() => setReceiptBooking(b)}
+                            className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-stone-700 bg-stone-100 hover:bg-stone-200 rounded-lg cursor-pointer"
                           >
-                            Start Care Session
+                            <FileText className="w-3.5 h-3.5" /> Payout Slip
                           </button>
-                        )}
 
-                        {b.status === 'in_progress' && (
-                          <button
-                            type="button"
-                            onClick={() =>
-                              updateBookingStatus({
-                                booking: b,
-                                nextStatus: 'completed',
-                                actorRole: 'caregiver',
-                              })
-                            }
-                            className="px-3.5 py-2 text-xs font-semibold text-white bg-teal-700 rounded-lg cursor-pointer"
-                          >
-                            Mark Service Completed
-                          </button>
-                        )}
+                          {b.customerPhone && (
+                            <a
+                              href={`tel:${b.customerPhone}`}
+                              className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-teal-800 bg-teal-50 rounded-lg"
+                            >
+                              <Phone className="w-3.5 h-3.5" /> Call Customer
+                            </a>
+                          )}
 
-                        {b.customerPhone && (
                           <a
-                            href={`tel:${b.customerPhone}`}
-                            className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-teal-800 bg-teal-50 rounded-lg"
+                            href={`https://wa.me/${whatsappClean}?text=${encodeURIComponent(
+                              `Hi PawCare Support, caregiver update for booking ${b.bookingId} (${b.petName}).`
+                            )}`}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-stone-700 bg-stone-100 rounded-lg"
                           >
-                            <Phone className="w-3.5 h-3.5" /> Call Customer
+                            <MessageCircle className="w-3.5 h-3.5" /> Support Desk
                           </a>
-                        )}
-
-                        <a
-                          href={`https://wa.me/${whatsappClean}?text=${encodeURIComponent(
-                            `Hi PawCare Support, caregiver update for booking ${b.bookingId} (${b.petName}).`
-                          )}`}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-stone-700 bg-stone-100 rounded-lg"
-                        >
-                          <MessageCircle className="w-3.5 h-3.5" /> Support Desk
-                        </a>
+                        </div>
                       </div>
-                    </div>
-                  ))}
-                </div>
-              )}
+                    ))}
+                  </div>
+                );
+              })()}
             </div>
           )}
 
@@ -951,14 +1370,64 @@ export function CaregiverDashboard() {
                 </div>
               </div>
 
+              {earningsChartData.length > 0 && (
+                <div className="bg-white border border-stone-200 rounded-2xl p-6 space-y-3">
+                  <h2 className="font-display text-lg font-bold text-stone-900">
+                    Monthly Payout Trend
+                  </h2>
+                  <div className="h-56 w-full">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={earningsChartData}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#e7e5e4" />
+                        <XAxis dataKey="month" tick={{ fontSize: 11 }} />
+                        <YAxis tick={{ fontSize: 11 }} />
+                        <Tooltip />
+                        <Bar dataKey="Earned" name="Earned (₹)" fill="#0F766E" radius={[6, 6, 0, 0]} />
+                        <Bar
+                          dataKey="Scheduled"
+                          name="Scheduled (₹)"
+                          fill="#6D28D9"
+                          radius={[6, 6, 0, 0]}
+                        />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+              )}
+
               <div className="bg-white border border-stone-200 rounded-2xl p-6 space-y-5">
-                <div>
-                  <h1 className="font-display text-2xl font-bold text-stone-900">
-                    Caregiver Earnings Breakdown
-                  </h1>
-                  <p className="text-sm text-stone-600">
-                    Shows gross booking value vs. platform contribution vs. your net caregiver payout.
-                  </p>
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div>
+                    <h1 className="font-display text-2xl font-bold text-stone-900">
+                      Caregiver Earnings Breakdown
+                    </h1>
+                    <p className="text-sm text-stone-600">
+                      Shows gross booking value vs. platform contribution vs. your net caregiver payout.
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <select
+                      value={earningsStatusFilter}
+                      onChange={(e) =>
+                        setEarningsStatusFilter(
+                          e.target.value as 'all' | 'completed' | 'active' | 'cancelled'
+                        )
+                      }
+                      className="px-3 py-2 text-xs bg-white border border-stone-200 rounded-xl"
+                    >
+                      <option value="all">All Bookings</option>
+                      <option value="completed">Completed Only</option>
+                      <option value="active">Scheduled / Active</option>
+                      <option value="cancelled">Cancelled / Rejected</option>
+                    </select>
+                    <button
+                      type="button"
+                      onClick={handleExportEarningsCsv}
+                      className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-white bg-teal-700 hover:bg-teal-800 rounded-xl cursor-pointer whitespace-nowrap"
+                    >
+                      <Download className="w-3.5 h-3.5" /> CSV
+                    </button>
+                  </div>
                 </div>
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm text-left">
@@ -969,11 +1438,12 @@ export function CaregiverDashboard() {
                         <th className="py-2.5 pr-4">Status</th>
                         <th className="py-2.5 pr-4 text-right">Gross Value</th>
                         <th className="py-2.5 pr-4 text-right">Platform Fee</th>
-                        <th className="py-2.5 text-right">Your Payout</th>
+                        <th className="py-2.5 pr-4 text-right">Your Payout</th>
+                        <th className="py-2.5 text-right">Slip</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-stone-100 font-mono-tabular text-xs">
-                      {bookings.map((b) => (
+                      {filteredEarningsBookings.map((b) => (
                         <tr key={b.bookingId}>
                           <td className="py-3 pr-4">{b.bookingDate}</td>
                           <td className="py-3 pr-4 font-sans">{b.serviceTitle}</td>
@@ -982,8 +1452,17 @@ export function CaregiverDashboard() {
                           <td className="py-3 pr-4 text-right text-stone-500">
                             ₹{b.platformCommission}
                           </td>
-                          <td className="py-3 text-right font-semibold text-teal-800">
+                          <td className="py-3 pr-4 text-right font-semibold text-teal-800">
                             ₹{b.caregiverPayout}
+                          </td>
+                          <td className="py-3 text-right font-sans">
+                            <button
+                              type="button"
+                              onClick={() => setReceiptBooking(b)}
+                              className="text-xs font-semibold text-violet-700 hover:underline cursor-pointer"
+                            >
+                              View
+                            </button>
                           </td>
                         </tr>
                       ))}
@@ -1040,6 +1519,7 @@ export function CaregiverDashboard() {
                   <input
                     type="text"
                     required
+                    minLength={2}
                     value={fullName}
                     onChange={(e) => setFullName(e.target.value)}
                     className="w-full px-3.5 py-2.5 text-sm border border-stone-200 rounded-xl"
@@ -1050,6 +1530,8 @@ export function CaregiverDashboard() {
                   <input
                     type="tel"
                     required
+                    minLength={8}
+                    maxLength={20}
                     value={phone}
                     onChange={(e) => setPhone(e.target.value)}
                     className="w-full px-3.5 py-2.5 text-sm border border-stone-200 rounded-xl"
@@ -1121,13 +1603,24 @@ export function CaregiverDashboard() {
               </div>
 
               <div className="p-4 bg-stone-50 border border-stone-200 rounded-xl space-y-3">
-                <label className="block text-xs font-semibold text-stone-700">
-                  Update Profile Photo (Upload or URL)
-                </label>
+                <div className="flex items-center justify-between gap-2">
+                  <label className="block text-xs font-semibold text-stone-700">
+                    Profile Portrait (Optional HTTPS Image URL or Default Avatar)
+                  </label>
+                  {photoUrl.trim() && (
+                    <button
+                      type="button"
+                      onClick={() => setPhotoUrl('')}
+                      className="text-xs font-medium text-red-700 hover:underline cursor-pointer"
+                    >
+                      Reset to Monogram
+                    </button>
+                  )}
+                </div>
                 <div className="flex items-center gap-4">
                   <div className="w-16 h-16 rounded-full overflow-hidden shrink-0 ring-1 ring-stone-200 bg-white">
                     <ImageWithFallback
-                      src={photoPreviewUrl || photoUrl || undefined}
+                      src={photoUrl.trim() || undefined}
                       alt={fullName || caregiverProfile.fullName}
                       fallbackLabel={fullName || caregiverProfile.fullName}
                       variant="avatar"
@@ -1135,34 +1628,17 @@ export function CaregiverDashboard() {
                       className="w-full h-full object-cover"
                     />
                   </div>
-                  <div className="flex-1 space-y-2 min-w-0">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <input
-                        type="file"
-                        accept="image/*"
-                        onChange={(e) => setPhotoFile(e.target.files?.[0] || null)}
-                        className="text-xs text-stone-600 file:mr-2 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:bg-white file:border file:border-stone-200 file:font-semibold"
-                      />
-                      {(photoFile || photoUrl.trim()) && (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setPhotoFile(null);
-                            setPhotoUrl('');
-                          }}
-                          className="text-xs font-medium text-red-700 hover:underline cursor-pointer"
-                        >
-                          Remove Photo
-                        </button>
-                      )}
-                    </div>
+                  <div className="flex-1 space-y-1.5 min-w-0">
                     <input
                       type="url"
                       value={photoUrl}
                       onChange={(e) => setPhotoUrl(e.target.value)}
-                      placeholder="Or paste photo URL (https://...)"
-                      className="w-full px-3 py-1.5 text-xs bg-white border border-stone-200 rounded-xl"
+                      placeholder="Paste direct HTTPS photo URL (https://...) or leave blank for initials badge"
+                      className="w-full px-3 py-2 text-xs bg-white border border-stone-200 rounded-xl"
                     />
+                    <p className="text-[11px] text-stone-500">
+                      Binary uploads are disabled on the Spark ₹0 plan; direct HTTPS image URLs or verified initials badges keep hosting fast and free.
+                    </p>
                   </div>
                 </div>
               </div>
@@ -1248,23 +1724,193 @@ export function CaregiverDashboard() {
             </form>
           )}
 
-          {activeTab === 'settings' && (
+          {activeTab === 'instructions' && (
+            <div className="space-y-4">
+              <div>
+                <h1 className="font-display text-2xl font-bold text-stone-900">
+                  Customer & Pet Care Instructions
+                </h1>
+                <p className="text-sm text-stone-600">
+                  All feeding schedules, health disclosures, entry instructions, and addresses for active & upcoming bookings.
+                </p>
+              </div>
+              {instructionsBookings.length === 0 ? (
+                <div className="bg-white border border-stone-200 rounded-2xl p-8 text-center text-sm text-stone-500">
+                  No active or upcoming bookings with customer instructions right now.
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {instructionsBookings.map((b) => (
+                    <div
+                      key={b.bookingId}
+                      className="bg-white border border-stone-200 rounded-2xl p-5 space-y-3"
+                    >
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                        <div>
+                          <h2 className="font-display text-lg font-bold text-stone-900">
+                            {b.petName} ({b.petType}{b.petBreed ? ` · ${b.petBreed}` : ''}) —{' '}
+                            {b.serviceTitle}
+                          </h2>
+                          <p className="text-xs text-stone-500">
+                            Customer: {b.customerName} {b.customerPhone ? `(${b.customerPhone})` : ''} ·{' '}
+                            {b.bookingDate} (
+                            {b.startTime && b.endTime ? `${b.startTime}–${b.endTime}` : b.timeSlot})
+                          </p>
+                        </div>
+                        <span className="text-xs font-semibold capitalize px-2.5 py-1 rounded-lg bg-violet-50 text-violet-800 border border-violet-200 self-start sm:self-center">
+                          {b.status.replace('_', ' ')}
+                        </span>
+                      </div>
+                      <div className="bg-stone-50 border border-stone-200 rounded-xl p-4 space-y-2 text-xs text-stone-700">
+                        <p>
+                          <span className="font-semibold text-stone-900">Service Address:</span>{' '}
+                          {b.serviceAddress}, {b.locality}
+                        </p>
+                        <p>
+                          <span className="font-semibold text-stone-900">
+                            Pet Feeding, Health & Behavior Notes:
+                          </span>{' '}
+                          {b.petInstructions || 'No additional pet notes provided.'}
+                        </p>
+                        <p>
+                          <span className="font-semibold text-stone-900">
+                            Customer Special Instructions:
+                          </span>{' '}
+                          {b.specialInstructions || 'No special entry or visit instructions provided.'}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {activeTab === 'availability' && (
+            <form
+              onSubmit={handleSubmitProfile}
+              className="bg-white border border-stone-200 rounded-2xl p-6 space-y-5"
+            >
+              <div>
+                <h1 className="font-display text-2xl font-bold text-stone-900">
+                  Availability & Service Area Settings
+                </h1>
+                <p className="text-sm text-stone-600">
+                  Update your Dehradun locality, active time slots, services offered, and expected session payout.
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-semibold text-stone-700 mb-1">
+                    Primary Dehradun Locality
+                  </label>
+                  <select
+                    value={locality}
+                    onChange={(e) => setLocality(e.target.value)}
+                    className="w-full px-3.5 py-2.5 text-sm border border-stone-200 rounded-xl"
+                  >
+                    {platformSettings.localities.map((loc) => (
+                      <option key={loc} value={loc}>
+                        {loc}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-stone-700 mb-1">
+                    Expected Charge / Payout (₹)
+                  </label>
+                  <input
+                    type="number"
+                    min="100"
+                    max="10000"
+                    value={expectedCharge}
+                    onChange={(e) => setExpectedCharge(e.target.value)}
+                    className="w-full px-3.5 py-2.5 text-sm border border-stone-200 rounded-xl"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-stone-700 mb-2">
+                  Active Time Slots
+                </label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                  {AVAILABILITY_SLOTS.map((slot) => (
+                    <label
+                      key={slot}
+                      className="flex items-center gap-2 p-2.5 border border-stone-200 rounded-xl cursor-pointer hover:bg-stone-50"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={availability.includes(slot)}
+                        onChange={() => toggleItem(availability, slot, setAvailability)}
+                      />
+                      <span>{slot}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-stone-700 mb-2">
+                  Services Offered
+                </label>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-xs">
+                  {services.map((svc) => (
+                    <label
+                      key={svc.serviceId}
+                      className="flex items-center gap-2 p-2.5 border border-stone-200 rounded-xl cursor-pointer hover:bg-stone-50"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={servicesOffered.includes(svc.title)}
+                        onChange={() => toggleItem(servicesOffered, svc.title, setServicesOffered)}
+                      />
+                      <span>{svc.title}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              <button
+                type="submit"
+                disabled={saving}
+                className="px-5 py-2.5 text-sm font-semibold text-white bg-violet-700 hover:bg-violet-800 rounded-xl cursor-pointer disabled:opacity-60"
+              >
+                {saving ? 'Saving Availability...' : 'Save Availability Settings'}
+              </button>
+            </form>
+          )}
+
+          {activeTab === 'verification' && (
             <div className="bg-white border border-stone-200 rounded-2xl p-6 space-y-5">
               <h1 className="font-display text-2xl font-bold text-stone-900">
-                Verification & Account Settings
+                Verification Status & Account Security
               </h1>
-              <div className="p-4 border border-stone-200 rounded-xl text-xs space-y-1.5 bg-stone-50">
-                <p className="font-semibold text-stone-900 text-sm">Submitted ID Verification</p>
-                <p>
-                  Document Type: <span className="font-semibold">{caregiverProfile.idDocType}</span> ·
-                  Reference: <span className="font-mono-tabular">{caregiverProfile.idDocNumber}</span>
+              <div
+                className={`p-4 border rounded-xl text-xs space-y-1.5 ${
+                  isVerifiedCaregiver
+                    ? 'bg-teal-50 border-teal-200 text-teal-950'
+                    : caregiverProfile.verificationStatus === 'rejected' ||
+                      caregiverProfile.accountStatus === 'suspended'
+                    ? 'bg-red-50 border-red-200 text-red-950'
+                    : 'bg-amber-50 border-amber-200 text-amber-950'
+                }`}
+              >
+                <p className="font-semibold text-sm">
+                  Current Status:{' '}
+                  <span className="capitalize">{caregiverProfile.verificationStatus}</span> ·
+                  Account: <span className="capitalize">{caregiverProfile.accountStatus}</span>
                 </p>
                 <p>
-                  Verification Status:{' '}
-                  <span className="capitalize font-semibold">{caregiverProfile.verificationStatus}</span>
+                  Submitted ID Document:{' '}
+                  <span className="font-semibold">{caregiverProfile.idDocType}</span> · Reference:{' '}
+                  <span className="font-mono-tabular">{caregiverProfile.idDocNumber}</span>
                 </p>
                 {caregiverProfile.adminNotes && (
-                  <p className="text-stone-600">Admin Note: {caregiverProfile.adminNotes}</p>
+                  <p>Admin Note: {caregiverProfile.adminNotes}</p>
                 )}
               </div>
 
@@ -1278,9 +1924,12 @@ export function CaregiverDashboard() {
                 <button
                   type="button"
                   onClick={async () => {
-                    if (firebaseUser?.email) {
+                    if (!firebaseUser?.email) return;
+                    try {
                       await resetPassword(firebaseUser.email);
                       showToast('success', 'Password reset email sent.');
+                    } catch (err) {
+                      showToast('error', formatAppError(err, 'Could not send reset email.'));
                     }
                   }}
                   className="px-3.5 py-2 text-xs font-semibold text-stone-800 bg-stone-100 hover:bg-stone-200 rounded-lg cursor-pointer"
@@ -1290,8 +1939,28 @@ export function CaregiverDashboard() {
               </div>
             </div>
           )}
+          {activeTab === 'help' && firebaseUser && (
+            <SupportHelpPanel
+              userId={firebaseUser.uid}
+              userName={caregiverProfile.fullName || firebaseUser.displayName || 'Caregiver'}
+              userEmail={caregiverProfile.email || firebaseUser.email || ''}
+              userPhone={caregiverProfile.phone}
+              roleLabel="caregiver"
+              bookings={bookings}
+              platformSettings={platformSettings}
+              onToast={showToast}
+            />
+          )}
+            </motion.div>
+          </AnimatePresence>
         </main>
       </div>
+
+      <BookingReceiptModal
+        booking={receiptBooking}
+        viewerRole="caregiver"
+        onClose={() => setReceiptBooking(null)}
+      />
     </div>
   );
 }

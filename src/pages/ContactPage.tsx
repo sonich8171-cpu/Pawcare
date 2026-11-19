@@ -1,7 +1,8 @@
 import { CheckCircle2, Mail, MapPin, MessageCircle } from 'lucide-react';
-import { useState, type FormEvent } from 'react';
+import { useEffect, useState, type FormEvent } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { usePublicData } from '../contexts/DataContext';
+import { formatAppError } from '../lib/authErrors';
 import { submitSupportTicket } from '../services/firestoreService';
 
 export function ContactPage() {
@@ -16,6 +17,14 @@ export function ContactPage() {
   const [submitting, setSubmitting] = useState(false);
   const [submittedId, setSubmittedId] = useState<string | null>(null);
   const [error, setError] = useState('');
+
+  useEffect(() => {
+    if (!name && userProfile?.displayName) setName(userProfile.displayName);
+    if (!email && (userProfile?.email || firebaseUser?.email)) {
+      setEmail(userProfile?.email || firebaseUser?.email || '');
+    }
+    if (!phone && userProfile?.phone) setPhone(userProfile.phone);
+  }, [userProfile, firebaseUser]);
 
   const whatsappClean = platformSettings.whatsappNumber.replace(/[^0-9]/g, '');
 
@@ -50,7 +59,7 @@ export function ContactPage() {
       setSubject('');
       setMessage('');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not submit inquiry.');
+      setError(formatAppError(err, 'Could not submit inquiry.'));
     } finally {
       setSubmitting(false);
     }

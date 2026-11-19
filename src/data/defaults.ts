@@ -98,13 +98,22 @@ export function resolvePetImage(pet?: { photoUrl?: string; petType?: PetType }):
   }
 }
 
+export const PET_PHOTO_PRESETS: { label: string; url: string; type: PetType }[] = [
+  { label: 'Golden Dog', url: dogPortraitImg, type: 'Dog' },
+  { label: 'Walk & Play Dog', url: walkingImg, type: 'Dog' },
+  { label: 'Cat Portrait', url: catPortraitImg, type: 'Cat' },
+  { label: 'Rabbit Portrait', url: rabbitPortraitImg, type: 'Rabbit' },
+  { label: 'Bird Portrait', url: birdPortraitImg, type: 'Bird' },
+  { label: 'Home Companion', url: sittingImg, type: 'Other' },
+];
+
 export const AVATAR_PALETTES = [
-  'bg-teal-100 text-teal-800 border-teal-200',
-  'bg-violet-100 text-violet-800 border-violet-200',
+  'bg-emerald-100 text-emerald-900 border-emerald-200',
+  'bg-green-100 text-green-900 border-green-200',
   'bg-amber-100 text-amber-900 border-amber-200',
-  'bg-sky-100 text-sky-800 border-sky-200',
-  'bg-emerald-100 text-emerald-800 border-emerald-200',
-  'bg-rose-100 text-rose-800 border-rose-200',
+  'bg-stone-200 text-stone-800 border-stone-300',
+  'bg-teal-100 text-teal-900 border-teal-200',
+  'bg-lime-100 text-lime-900 border-lime-200',
 ] as const;
 
 export function getAvatarTone(seed: string): string {

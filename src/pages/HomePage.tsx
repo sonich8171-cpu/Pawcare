@@ -2,11 +2,13 @@ import {
   ArrowRight,
   CheckCircle2,
   ChevronDown,
+  Gamepad2,
   MapPin,
   MessageCircle,
   ShieldCheck,
   Star,
 } from 'lucide-react';
+import { AnimatePresence, motion } from 'motion/react';
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { ImageWithFallback } from '../components/ImageWithFallback';
@@ -34,8 +36,8 @@ export function HomePage() {
       {/* Hero Section */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-10 lg:pt-14">
         {platformSettings.heroBannerNotice && (
-          <p className="text-xs font-medium text-teal-800 mb-5 flex items-center gap-2">
-            <MapPin className="w-3.5 h-3.5 shrink-0 text-teal-700" />
+          <p className="text-xs font-medium text-emerald-900 mb-5 flex items-center gap-2">
+            <MapPin className="w-3.5 h-3.5 shrink-0 text-emerald-800" />
             <span>{platformSettings.heroBannerNotice}</span>
           </p>
         )}
@@ -43,7 +45,7 @@ export function HomePage() {
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-12 items-stretch">
           <div className="lg:col-span-6 flex flex-col justify-center space-y-6">
             <div className="space-y-4">
-              <p className="text-sm font-medium text-violet-700 tracking-tight">
+              <p className="text-sm font-semibold text-emerald-800 tracking-tight">
                 Dehradun Pet Care Marketplace · Your Pet&apos;s Happiness, Our Priority
               </p>
               <h1 className="font-display text-4xl sm:text-5xl font-extrabold text-stone-900 tracking-tight leading-[1.12] text-balance">
@@ -59,8 +61,8 @@ export function HomePage() {
             <div className="flex flex-wrap items-center gap-4 pt-2">
               <button
                 type="button"
-                onClick={() => navigate('/dashboard/book')}
-                className="inline-flex items-center justify-center gap-2 px-6 py-3 text-sm font-semibold text-white bg-teal-700 hover:bg-teal-800 rounded-xl transition-colors whitespace-nowrap shrink-0 cursor-pointer"
+                onClick={() => navigate('/customer/dashboard/book')}
+                className="inline-flex items-center justify-center gap-2 px-6 py-3 text-sm font-semibold text-white bg-emerald-900 hover:bg-emerald-800 rounded-xl transition-colors whitespace-nowrap shrink-0 cursor-pointer"
               >
                 Book a Service
                 <ArrowRight className="w-4 h-4" />
@@ -70,6 +72,12 @@ export function HomePage() {
                 className="inline-flex items-center justify-center px-5 py-3 text-sm font-semibold text-stone-800 bg-white border border-stone-300 hover:bg-stone-50 rounded-xl transition-colors whitespace-nowrap shrink-0"
               >
                 Explore Caregivers
+              </Link>
+              <Link
+                to="/play"
+                className="inline-flex items-center justify-center gap-1.5 px-4 py-3 text-sm font-semibold text-emerald-950 bg-amber-400 hover:bg-amber-300 rounded-xl transition-colors whitespace-nowrap shrink-0"
+              >
+                <Gamepad2 className="w-4 h-4" /> Play Zone
               </Link>
             </div>
 
@@ -89,17 +97,23 @@ export function HomePage() {
             </div>
           </div>
 
-          <div className="lg:col-span-6">
-            <div className="h-full min-h-[300px] lg:min-h-[440px] rounded-2xl overflow-hidden border border-stone-200 bg-stone-100 shadow-sm">
+          <motion.div
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
+            className="lg:col-span-6"
+          >
+            <div className="group h-full min-h-[300px] lg:min-h-[440px] rounded-2xl overflow-hidden border border-stone-200 bg-stone-100 shadow-sm">
               <ImageWithFallback
                 src={BRAND_ASSETS.heroPetcareImg}
                 alt="Caregiver walking a happy Golden Retriever on a sunlit residential avenue in Dehradun"
                 className="w-full h-full object-cover"
                 fallbackLabel="PawCare Dehradun"
                 loading="eager"
+                hoverZoom
               />
             </div>
-          </div>
+          </motion.div>
         </div>
       </section>
 
@@ -124,9 +138,13 @@ export function HomePage() {
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-5">
-          {services.slice(0, 5).map((service) => (
-            <div
+          {services.slice(0, 5).map((service, idx) => (
+            <motion.div
               key={service.serviceId}
+              initial={{ opacity: 0, y: 12 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, amount: 0.15 }}
+              transition={{ duration: 0.28, delay: idx * 0.04, ease: [0.16, 1, 0.3, 1] }}
               className="group bg-white border border-stone-200 rounded-2xl overflow-hidden flex flex-col justify-between transition-all hover:border-teal-300 hover:shadow-sm"
             >
               <div>
@@ -134,8 +152,9 @@ export function HomePage() {
                   <ImageWithFallback
                     src={resolveServiceImage(service)}
                     alt={`${service.title} service in Dehradun`}
-                    className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-[1.03]"
+                    className="w-full h-full object-cover"
                     fallbackLabel={service.title}
+                    hoverZoom
                   />
                 </div>
                 <div className="p-4 space-y-2">
@@ -155,13 +174,13 @@ export function HomePage() {
               <div className="px-4 pb-4 pt-1">
                 <button
                   type="button"
-                  onClick={() => navigate(`/dashboard/book?service=${service.serviceId}`)}
+                  onClick={() => navigate(`/customer/dashboard/book?service=${service.serviceId}`)}
                   className="w-full py-2 px-3 text-xs font-semibold text-teal-800 bg-teal-50 hover:bg-teal-100 rounded-lg transition-colors cursor-pointer whitespace-nowrap truncate"
                 >
                   Book {service.title}
                 </button>
               </div>
-            </div>
+            </motion.div>
           ))}
         </div>
       </section>
@@ -215,12 +234,13 @@ export function HomePage() {
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-stretch">
           <div className="lg:col-span-5">
-            <div className="h-full min-h-[300px] rounded-2xl overflow-hidden border border-stone-200">
+            <div className="group h-full min-h-[300px] rounded-2xl overflow-hidden border border-stone-200">
               <ImageWithFallback
                 src={BRAND_ASSETS.trustCaregiverImg}
                 alt="Verified PawCare caregiver gently greeting a Beagle indoors"
                 className="w-full h-full object-cover"
                 fallbackLabel="Trust & Safety"
+                hoverZoom
               />
             </div>
           </div>
@@ -299,7 +319,7 @@ export function HomePage() {
               </p>
             </div>
             <Link
-              to="/caregiver"
+              to="/register/caregiver"
               className="px-5 py-2.5 text-sm font-semibold text-white bg-violet-700 hover:bg-violet-800 rounded-xl whitespace-nowrap shrink-0 transition-colors"
             >
               Apply as a Caregiver
@@ -355,7 +375,7 @@ export function HomePage() {
                     </span>
                     <button
                       type="button"
-                      onClick={() => navigate(`/dashboard/book?caregiver=${cg.caregiverId}`)}
+                      onClick={() => navigate(`/customer/dashboard/book?caregiver=${cg.caregiverId}`)}
                       className="text-sm font-semibold text-teal-700 hover:text-teal-800 cursor-pointer"
                     >
                       Book Session
@@ -400,6 +420,38 @@ export function HomePage() {
         </section>
       )}
 
+      {/* Play Zone Highlight */}
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="bg-gradient-to-br from-emerald-950 via-emerald-900 to-emerald-800 text-white rounded-3xl p-8 sm:p-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+          <div className="space-y-2 max-w-xl">
+            <p className="text-xs font-bold uppercase tracking-wider text-amber-300 inline-flex items-center gap-1.5">
+              <Gamepad2 className="w-4 h-4" /> PawCare Play Zone · 4 Free Games
+            </p>
+            <h2 className="font-display text-2xl sm:text-3xl font-extrabold">
+              Relax with Paw Runner, Memory Match, Treat Catcher &amp; Pet Rescue
+            </h2>
+            <p className="text-sm text-emerald-100 leading-relaxed">
+              Play anytime in your browser, collect Paw Points, and unlock 6 entertainment badges
+              synced to your customer profile at ₹0 cost.
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-3 shrink-0">
+            <Link
+              to="/play"
+              className="inline-flex items-center gap-2 px-5 py-3 rounded-xl bg-amber-400 hover:bg-amber-300 text-emerald-950 text-sm font-bold transition-colors"
+            >
+              <Gamepad2 className="w-4 h-4" /> Enter Play Zone
+            </Link>
+            <Link
+              to="/rewards"
+              className="inline-flex items-center gap-2 px-5 py-3 rounded-xl bg-white/10 hover:bg-white/20 text-white border border-white/20 text-sm font-semibold transition-colors"
+            >
+              View Badges
+            </Link>
+          </div>
+        </div>
+      </section>
+
       {/* FAQs & Contact Band */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid grid-cols-1 lg:grid-cols-12 gap-10">
         <div className="lg:col-span-7 space-y-6">
@@ -424,24 +476,34 @@ export function HomePage() {
                       }`}
                     />
                   </button>
-                  {isOpen && (
-                    <p className="mt-2.5 text-sm text-stone-600 leading-relaxed">{faq.answer}</p>
-                  )}
+                  <AnimatePresence initial={false}>
+                    {isOpen && (
+                      <motion.p
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: 'auto' }}
+                        exit={{ opacity: 0, height: 0 }}
+                        transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
+                        className="mt-2.5 text-sm text-stone-600 leading-relaxed overflow-hidden"
+                      >
+                        {faq.answer}
+                      </motion.p>
+                    )}
+                  </AnimatePresence>
                 </div>
               );
             })}
           </div>
         </div>
 
-        <div className="lg:col-span-5 bg-stone-900 text-white rounded-2xl p-8 flex flex-col justify-between space-y-6">
+        <div className="lg:col-span-5 bg-emerald-950 text-white rounded-2xl p-8 flex flex-col justify-between space-y-6">
           <div className="space-y-3">
-            <p className="text-xs font-medium text-teal-300">Dehradun Care Desk</p>
+            <p className="text-xs font-medium text-amber-300">Dehradun Care Desk</p>
             <h3 className="font-display text-2xl font-bold tracking-tight">
               Need help matching a caregiver or scheduling regular walks?
             </h3>
-            <p className="text-sm text-stone-300 leading-relaxed">
-              Reach our local team directly on WhatsApp or open a support request from your
-              account.
+            <p className="text-sm text-emerald-100 leading-relaxed">
+              Reach our local team directly on WhatsApp or open a live support message from the
+              widget below.
             </p>
           </div>
           <div className="flex flex-wrap gap-3">
@@ -451,14 +513,14 @@ export function HomePage() {
               )}`}
               target="_blank"
               rel="noreferrer"
-              className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-stone-900 bg-teal-300 hover:bg-teal-200 rounded-xl transition-colors"
+              className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-emerald-950 bg-amber-400 hover:bg-amber-300 rounded-xl transition-colors"
             >
               <MessageCircle className="w-4 h-4" />
               Chat on WhatsApp
             </a>
             <Link
               to="/contact"
-              className="inline-flex items-center px-5 py-2.5 text-sm font-semibold text-white border border-stone-700 hover:bg-stone-800 rounded-xl transition-colors"
+              className="inline-flex items-center px-5 py-2.5 text-sm font-semibold text-white border border-white/20 hover:bg-white/10 rounded-xl transition-colors"
             >
               Contact Form
             </Link>

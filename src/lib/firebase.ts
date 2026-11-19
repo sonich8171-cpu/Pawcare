@@ -1,7 +1,6 @@
 import { initializeApp } from 'firebase/app';
 import { browserLocalPersistence, getAuth, setPersistence } from 'firebase/auth';
 import { doc, getDocFromServer, getFirestore } from 'firebase/firestore';
-import { getDownloadURL, getStorage, ref, uploadBytes } from 'firebase/storage';
 import appletConfig from '../../firebase-applet-config.json';
 
 function sanitizeEnvValue(raw: string | undefined): string | undefined {
@@ -41,7 +40,6 @@ export const auth = getAuth(firebaseApp);
 setPersistence(auth, browserLocalPersistence).catch((err) => {
   console.warn('Auth persistence setup notice:', err);
 });
-export const storage = getStorage(firebaseApp);
 
 export const BOOTSTRAP_ADMIN_EMAIL = 'sonich8171@gmail.com';
 
@@ -109,8 +107,3 @@ export async function testFirestoreConnection(): Promise<boolean> {
   }
 }
 
-export async function uploadMediaFile(storagePath: string, file: File): Promise<string> {
-  const fileRef = ref(storage, storagePath);
-  await uploadBytes(fileRef, file, { contentType: file.type });
-  return await getDownloadURL(fileRef);
-}

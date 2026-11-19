@@ -1,5 +1,5 @@
 import { PawPrint } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { getAvatarTone, getInitials } from '../data/defaults';
 
 interface ImageWithFallbackProps {
@@ -10,6 +10,7 @@ interface ImageWithFallbackProps {
   variant?: 'media' | 'avatar' | 'pet';
   seed?: string;
   loading?: 'lazy' | 'eager';
+  hoverZoom?: boolean;
 }
 
 export function ImageWithFallback({
@@ -20,13 +21,19 @@ export function ImageWithFallback({
   variant = 'media',
   seed,
   loading = 'lazy',
+  hoverZoom = false,
 }: ImageWithFallbackProps) {
   const [hasError, setHasError] = useState(false);
   const [isLoaded, setIsLoaded] = useState(false);
+  const imgRef = useRef<HTMLImageElement | null>(null);
 
   useEffect(() => {
     setHasError(false);
-    setIsLoaded(false);
+    if (imgRef.current && imgRef.current.complete && imgRef.current.naturalWidth > 0) {
+      setIsLoaded(true);
+    } else {
+      setIsLoaded(false);
+    }
   }, [src]);
 
   if (!src || hasError) {
@@ -63,12 +70,10 @@ export function ImageWithFallback({
   return (
     <div className="relative w-full h-full overflow-hidden bg-stone-100">
       {!isLoaded && (
-        <div
-          className="absolute inset-0 bg-gradient-to-br from-stone-100 to-stone-200/70 animate-pulse"
-          aria-hidden="true"
-        />
+        <div className="absolute inset-0 photo-shimmer" aria-hidden="true" />
       )}
       <img
+        ref={imgRef}
         src={src}
         alt={alt}
         referrerPolicy="no-referrer"
@@ -76,8 +81,12 @@ export function ImageWithFallback({
         decoding="async"
         onLoad={() => setIsLoaded(true)}
         onError={() => setHasError(true)}
-        className={`${className} transition-opacity duration-200 ${
-          isLoaded ? 'opacity-100' : 'opacity-0'
+        className={`${className} transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] will-change-transform ${
+          hoverZoom ? 'group-hover:scale-[1.04]' : ''
+        } ${
+          isLoaded
+            ? 'opacity-100 scale-100 blur-0'
+            : 'opacity-0 scale-[1.02] blur-[4px]'
         }`}
       />
     </div>

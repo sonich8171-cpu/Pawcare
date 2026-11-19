@@ -166,10 +166,11 @@ service cloud.firestore {
 
     function isValidBooking(data) {
       return data.keys().hasAll(['bookingId', 'customerId', 'customerName', 'caregiverId', 'caregiverName', 'petId', 'petName', 'serviceId', 'serviceTitle', 'bookingDate', 'timeSlot', 'locality', 'serviceAddress', 'grossAmount', 'caregiverPayout', 'platformCommission', 'paymentMethod', 'paymentStatus', 'status', 'hasReview', 'disputeStatus', 'createdAt', 'updatedAt']) &&
-        data.keys().hasOnly(['bookingId', 'customerId', 'customerName', 'customerPhone', 'caregiverId', 'caregiverName', 'petId', 'petName', 'petType', 'petBreed', 'petInstructions', 'serviceId', 'serviceTitle', 'bookingDate', 'timeSlot', 'locality', 'serviceAddress', 'specialInstructions', 'grossAmount', 'caregiverPayout', 'platformCommission', 'paymentMethod', 'paymentStatus', 'status', 'hasReview', 'disputeStatus', 'disputeNotes', 'createdAt', 'updatedAt']) &&
+        data.keys().hasOnly(['bookingId', 'customerId', 'customerName', 'customerEmail', 'customerPhone', 'caregiverId', 'caregiverName', 'petId', 'petName', 'petType', 'petBreed', 'petInstructions', 'serviceId', 'serviceName', 'serviceTitle', 'bookingDate', 'startTime', 'endTime', 'timeSlot', 'locality', 'serviceAddress', 'specialInstructions', 'bookingAmount', 'grossAmount', 'caregiverPayout', 'platformCommission', 'paymentMethod', 'paymentStatus', 'bookingStatus', 'status', 'hasReview', 'disputeStatus', 'disputeNotes', 'createdAt', 'updatedAt']) &&
         isValidId(data.bookingId) &&
         isValidId(data.customerId) &&
         isNonEmptyStr(data.customerName, 2, 100) &&
+        isOptStr(data, 'customerEmail', 160) &&
         isOptStr(data, 'customerPhone', 20) &&
         isValidId(data.caregiverId) &&
         isNonEmptyStr(data.caregiverName, 2, 100) &&
@@ -179,17 +180,22 @@ service cloud.firestore {
         isOptStr(data, 'petBreed', 80) &&
         isOptStr(data, 'petInstructions', 1000) &&
         isValidId(data.serviceId) &&
+        isOptStr(data, 'serviceName', 100) &&
         isNonEmptyStr(data.serviceTitle, 2, 100) &&
         data.bookingDate is string && data.bookingDate.size() == 10 && data.bookingDate.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$') &&
+        isOptStr(data, 'startTime', 16) &&
+        isOptStr(data, 'endTime', 16) &&
         isNonEmptyStr(data.timeSlot, 3, 40) &&
         isNonEmptyStr(data.locality, 2, 100) &&
         isNonEmptyStr(data.serviceAddress, 5, 300) &&
         isOptStr(data, 'specialInstructions', 600) &&
+        (!('bookingAmount' in data) || ((data.bookingAmount is int || data.bookingAmount is float) && data.bookingAmount > 0 && data.bookingAmount <= 50000)) &&
         (data.grossAmount is int || data.grossAmount is float) && data.grossAmount > 0 && data.grossAmount <= 50000 &&
         (data.caregiverPayout is int || data.caregiverPayout is float) && data.caregiverPayout >= 0 && data.caregiverPayout <= data.grossAmount &&
         (data.platformCommission is int || data.platformCommission is float) && data.platformCommission >= 0 && data.platformCommission <= data.grossAmount &&
         data.paymentMethod in ['cash', 'upi', 'online_gateway'] &&
         data.paymentStatus in ['pending', 'test_verified', 'paid', 'refund_pending', 'refunded'] &&
+        (!('bookingStatus' in data) || data.bookingStatus in ['pending', 'accepted', 'rejected', 'confirmed', 'in_progress', 'completed', 'cancelled']) &&
         data.status in ['pending', 'accepted', 'rejected', 'confirmed', 'in_progress', 'completed', 'cancelled'] &&
         data.hasReview is bool &&
         data.disputeStatus in ['none', 'open', 'resolved'] &&
@@ -200,12 +206,14 @@ service cloud.firestore {
 
     function isValidBookingLock(data) {
       return data.keys().hasAll(['lockId', 'bookingId', 'caregiverId', 'customerId', 'bookingDate', 'timeSlot', 'status', 'createdAt', 'updatedAt']) &&
-        data.keys().hasOnly(['lockId', 'bookingId', 'caregiverId', 'customerId', 'bookingDate', 'timeSlot', 'status', 'createdAt', 'updatedAt']) &&
+        data.keys().hasOnly(['lockId', 'bookingId', 'caregiverId', 'customerId', 'bookingDate', 'startTime', 'endTime', 'timeSlot', 'status', 'createdAt', 'updatedAt']) &&
         isValidId(data.lockId) &&
         isValidId(data.bookingId) &&
         isValidId(data.caregiverId) &&
         isValidId(data.customerId) &&
         data.bookingDate is string && data.bookingDate.size() == 10 &&
+        isOptStr(data, 'startTime', 16) &&
+        isOptStr(data, 'endTime', 16) &&
         isNonEmptyStr(data.timeSlot, 3, 40) &&
         data.status in ['active', 'released'] &&
         data.createdAt is timestamp &&
@@ -326,6 +334,75 @@ service cloud.firestore {
         data.updatedAt is timestamp;
     }
 
+    function isValidGameSession(data) {
+      return data.keys().hasAll(['sessionId', 'userId', 'gameId', 'score', 'pointsEarned', 'levelReached', 'durationSec', 'createdAt']) &&
+        data.keys().hasOnly(['sessionId', 'userId', 'gameId', 'score', 'pointsEarned', 'levelReached', 'durationSec', 'createdAt']) &&
+        isValidId(data.sessionId) &&
+        isValidId(data.userId) &&
+        data.gameId in ['paw_runner', 'paw_memory', 'feed_puppy', 'pet_rescue'] &&
+        (data.score is int || data.score is float) && data.score >= 0 && data.score <= 1000000 &&
+        (data.pointsEarned is int) && data.pointsEarned >= 0 && data.pointsEarned <= 150 &&
+        (data.levelReached is int) && data.levelReached >= 1 && data.levelReached <= 99 &&
+        (data.durationSec is int || data.durationSec is float) && data.durationSec >= 0 && data.durationSec <= 7200 &&
+        data.createdAt is timestamp;
+    }
+
+    function isValidUserRewards(data) {
+      return data.keys().hasAll(['userId', 'totalPoints', 'gamesPlayed', 'bestScores', 'achievements', 'createdAt', 'updatedAt']) &&
+        data.keys().hasOnly(['userId', 'totalPoints', 'gamesPlayed', 'bestScores', 'achievements', 'createdAt', 'updatedAt']) &&
+        isValidId(data.userId) &&
+        (data.totalPoints is int) && data.totalPoints >= 0 && data.totalPoints <= 1000000 &&
+        (data.gamesPlayed is int) && data.gamesPlayed >= 0 && data.gamesPlayed <= 100000 &&
+        data.bestScores is map &&
+        data.bestScores.keys().hasOnly(['paw_runner', 'paw_memory', 'feed_puppy', 'pet_rescue']) &&
+        data.achievements is list && data.achievements.size() <= 16 &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidConversation(data) {
+      return data.keys().hasAll(['conversationId', 'userId', 'userName', 'userEmail', 'userRole', 'subject', 'status', 'lastMessage', 'lastSenderRole', 'unreadByAdmin', 'unreadByUser', 'createdAt', 'updatedAt']) &&
+        data.keys().hasOnly(['conversationId', 'userId', 'userName', 'userEmail', 'userRole', 'subject', 'status', 'lastMessage', 'lastSenderRole', 'unreadByAdmin', 'unreadByUser', 'createdAt', 'updatedAt']) &&
+        isValidId(data.conversationId) &&
+        isValidId(data.userId) &&
+        isNonEmptyStr(data.userName, 2, 100) &&
+        isNonEmptyStr(data.userEmail, 5, 160) &&
+        data.userRole in ['customer', 'caregiver'] &&
+        isNonEmptyStr(data.subject, 2, 150) &&
+        data.status in ['open', 'in_review', 'resolved'] &&
+        isNonEmptyStr(data.lastMessage, 1, 800) &&
+        data.lastSenderRole in ['user', 'admin'] &&
+        data.unreadByAdmin is bool &&
+        data.unreadByUser is bool &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidSupportMessage(data) {
+      return data.keys().hasAll(['messageId', 'conversationId', 'senderId', 'senderName', 'senderRole', 'text', 'createdAt']) &&
+        data.keys().hasOnly(['messageId', 'conversationId', 'senderId', 'senderName', 'senderRole', 'text', 'createdAt']) &&
+        isValidId(data.messageId) &&
+        isValidId(data.conversationId) &&
+        isValidId(data.senderId) &&
+        isNonEmptyStr(data.senderName, 2, 100) &&
+        data.senderRole in ['user', 'admin'] &&
+        isNonEmptyStr(data.text, 1, 1000) &&
+        data.createdAt is timestamp;
+    }
+
+    function isValidAuditLog(data) {
+      return data.keys().hasAll(['logId', 'actorUid', 'actorEmail', 'action', 'targetType', 'targetId', 'details', 'createdAt']) &&
+        data.keys().hasOnly(['logId', 'actorUid', 'actorEmail', 'action', 'targetType', 'targetId', 'details', 'createdAt']) &&
+        isValidId(data.logId) &&
+        isValidId(data.actorUid) &&
+        isNonEmptyStr(data.actorEmail, 5, 160) &&
+        isNonEmptyStr(data.action, 2, 80) &&
+        isNonEmptyStr(data.targetType, 2, 60) &&
+        isNonEmptyStr(data.targetId, 1, 128) &&
+        isNonEmptyStr(data.details, 2, 500) &&
+        data.createdAt is timestamp;
+    }
+
     // --- Collection Rules ---
 
     match /users/{userId} {
@@ -336,7 +413,7 @@ service cloud.firestore {
         isValidUser(incoming()) &&
         isOwner(userId) &&
         incoming().uid == userId &&
-        incoming().role in ['customer', 'caregiver'] &&
+        (incoming().role in ['customer', 'caregiver'] || (isAdmin() && incoming().role == 'admin')) &&
         incoming().accountStatus == 'active' &&
         incoming().createdAt == request.time &&
         incoming().updatedAt == request.time;
@@ -502,6 +579,8 @@ service cloud.firestore {
         incoming().bookingId == bookingId &&
         incoming().customerId == request.auth.uid &&
         incoming().status == 'pending' &&
+        (!('bookingStatus' in incoming()) || incoming().bookingStatus == 'pending') &&
+        (!('bookingAmount' in incoming()) || incoming().bookingAmount == incoming().grossAmount) &&
         incoming().hasReview == false &&
         incoming().disputeStatus == 'none' &&
         incoming().createdAt == request.time &&
@@ -520,15 +599,20 @@ service cloud.firestore {
         incoming().petId == existing().petId &&
         incoming().serviceId == existing().serviceId &&
         incoming().grossAmount == existing().grossAmount &&
+        (!('bookingAmount' in existing()) || incoming().bookingAmount == existing().bookingAmount) &&
         incoming().caregiverPayout == existing().caregiverPayout &&
         incoming().platformCommission == existing().platformCommission &&
         incoming().createdAt == existing().createdAt &&
         incoming().updatedAt == request.time &&
+        (!('bookingStatus' in incoming()) || incoming().bookingStatus == incoming().status) &&
         (
-          (isAdmin() && incoming().diff(existing()).affectedKeys().hasOnly(['status', 'paymentStatus', 'disputeStatus', 'disputeNotes', 'updatedAt'])) ||
+          (isAdmin() && incoming().diff(existing()).affectedKeys().hasOnly(['status', 'bookingStatus', 'paymentStatus', 'disputeStatus', 'disputeNotes', 'updatedAt'])) ||
           (existing().caregiverId == request.auth.uid &&
             !(existing().status in ['completed', 'cancelled', 'rejected']) &&
-            incoming().diff(existing()).affectedKeys().hasOnly(['status', 'updatedAt']) &&
+            exists(/databases/$(database)/documents/caregiversPublic/$(request.auth.uid)) &&
+            get(/databases/$(database)/documents/caregiversPublic/$(request.auth.uid)).data.verificationStatus == 'verified' &&
+            get(/databases/$(database)/documents/caregiversPublic/$(request.auth.uid)).data.accountStatus == 'active' &&
+            incoming().diff(existing()).affectedKeys().hasOnly(['status', 'bookingStatus', 'updatedAt']) &&
             (
               (existing().status == 'pending' && incoming().status in ['accepted', 'rejected']) ||
               (existing().status == 'accepted' && incoming().status in ['confirmed', 'in_progress', 'cancelled']) ||
@@ -538,12 +622,12 @@ service cloud.firestore {
           (existing().customerId == request.auth.uid &&
             existing().status in ['pending', 'accepted', 'confirmed'] &&
             incoming().status == 'cancelled' &&
-            incoming().diff(existing()).affectedKeys().hasOnly(['status', 'paymentStatus', 'updatedAt'])) ||
+            incoming().diff(existing()).affectedKeys().hasOnly(['status', 'bookingStatus', 'paymentStatus', 'updatedAt'])) ||
           (existing().customerId == request.auth.uid &&
             existing().status == 'accepted' &&
             incoming().status in ['accepted', 'confirmed'] &&
             incoming().paymentStatus in ['pending', 'test_verified'] &&
-            incoming().diff(existing()).affectedKeys().hasOnly(['status', 'paymentStatus', 'updatedAt'])) ||
+            incoming().diff(existing()).affectedKeys().hasOnly(['status', 'bookingStatus', 'paymentStatus', 'updatedAt'])) ||
           (existing().customerId == request.auth.uid &&
             existing().status == 'completed' &&
             existing().hasReview == false &&
@@ -586,7 +670,7 @@ service cloud.firestore {
           (existing().status == 'released' &&
             incoming().status == 'active' &&
             incoming().customerId == request.auth.uid &&
-            incoming().diff(existing()).affectedKeys().hasOnly(['bookingId', 'customerId', 'status', 'updatedAt']) &&
+            incoming().diff(existing()).affectedKeys().hasOnly(['bookingId', 'customerId', 'startTime', 'endTime', 'status', 'updatedAt']) &&
             existsAfter(/databases/$(database)/documents/bookings/$(incoming().bookingId)))
         );
       allow delete: if isAdmin() && isValidId(lockId);
@@ -721,6 +805,107 @@ service cloud.firestore {
       allow create: if isAdmin() && isValidId(promoId) && isValidPromotion(incoming()) && incoming().promoId == promoId && incoming().createdAt == request.time && incoming().updatedAt == request.time;
       allow update: if isAdmin() && isValidId(promoId) && isValidPromotion(incoming()) && incoming().promoId == existing().promoId && incoming().createdAt == existing().createdAt && incoming().updatedAt == request.time;
       allow delete: if isAdmin() && isValidId(promoId);
+    }
+
+    match /gameSessions/{sessionId} {
+      allow get: if isValidId(sessionId) && isSignedIn() && (existing().userId == request.auth.uid || isAdmin());
+      allow list: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow create: if isVerifiedUser() &&
+        isValidId(sessionId) &&
+        isValidGameSession(incoming()) &&
+        incoming().sessionId == sessionId &&
+        incoming().userId == request.auth.uid &&
+        incoming().createdAt == request.time;
+      allow update, delete: if isAdmin() && isValidId(sessionId);
+    }
+
+    match /rewards/{userId} {
+      allow get: if isValidId(userId) && (isOwner(userId) || isAdmin());
+      allow list: if isAdmin();
+      allow create: if isVerifiedUser() &&
+        isValidId(userId) &&
+        isOwner(userId) &&
+        isValidUserRewards(incoming()) &&
+        incoming().userId == userId &&
+        incoming().totalPoints >= 0 &&
+        incoming().totalPoints <= 150 &&
+        incoming().gamesPlayed == 1 &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time;
+      allow update: if isVerifiedUser() &&
+        isValidId(userId) &&
+        isValidUserRewards(incoming()) &&
+        incoming().userId == existing().userId &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().updatedAt == request.time &&
+        (
+          isAdmin() ||
+          (isOwner(userId) &&
+            incoming().totalPoints >= existing().totalPoints &&
+            incoming().totalPoints <= existing().totalPoints + 150 &&
+            incoming().gamesPlayed == existing().gamesPlayed + 1)
+        );
+      allow delete: if isAdmin() && isValidId(userId);
+    }
+
+    match /conversations/{conversationId} {
+      allow get: if isValidId(conversationId) && isSignedIn() && (existing().userId == request.auth.uid || isAdmin());
+      allow list: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow create: if isVerifiedUser() &&
+        isValidId(conversationId) &&
+        isValidConversation(incoming()) &&
+        incoming().conversationId == conversationId &&
+        incoming().userId == request.auth.uid &&
+        incoming().status == 'open' &&
+        incoming().lastSenderRole == 'user' &&
+        incoming().unreadByAdmin == true &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time;
+      allow update: if isVerifiedUser() &&
+        isValidId(conversationId) &&
+        isValidConversation(incoming()) &&
+        incoming().conversationId == existing().conversationId &&
+        incoming().userId == existing().userId &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().updatedAt == request.time &&
+        (
+          isAdmin() ||
+          (existing().userId == request.auth.uid &&
+            incoming().diff(existing()).affectedKeys().hasOnly(['lastMessage', 'lastSenderRole', 'unreadByAdmin', 'unreadByUser', 'status', 'updatedAt']) &&
+            incoming().status in ['open', 'resolved'])
+        );
+      allow delete: if isAdmin() && isValidId(conversationId);
+
+      match /messages/{messageId} {
+        allow get: if isValidId(conversationId) && isValidId(messageId) && isSignedIn() && (get(/databases/$(database)/documents/conversations/$(conversationId)).data.userId == request.auth.uid || isAdmin());
+        allow list: if isValidId(conversationId) && isSignedIn() && (get(/databases/$(database)/documents/conversations/$(conversationId)).data.userId == request.auth.uid || isAdmin());
+        allow create: if isVerifiedUser() &&
+          isValidId(conversationId) &&
+          isValidId(messageId) &&
+          isValidSupportMessage(incoming()) &&
+          incoming().messageId == messageId &&
+          incoming().conversationId == conversationId &&
+          incoming().senderId == request.auth.uid &&
+          incoming().createdAt == request.time &&
+          exists(/databases/$(database)/documents/conversations/$(conversationId)) &&
+          (
+            (isAdmin() && incoming().senderRole == 'admin') ||
+            (incoming().senderRole == 'user' &&
+              get(/databases/$(database)/documents/conversations/$(conversationId)).data.userId == request.auth.uid)
+          );
+        allow update, delete: if isAdmin() && isValidId(conversationId) && isValidId(messageId);
+      }
+    }
+
+    match /auditLogs/{logId} {
+      allow get, list: if isAdmin();
+      allow create: if isAdmin() &&
+        isValidId(logId) &&
+        isValidAuditLog(incoming()) &&
+        incoming().logId == logId &&
+        incoming().actorUid == request.auth.uid &&
+        incoming().createdAt == request.time;
+      allow update, delete: if false;
     }
   }
 }
